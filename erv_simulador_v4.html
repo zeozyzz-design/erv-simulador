@@ -1,0 +1,2283 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ERV Consultoria — Simulador de Ponto de Equilíbrio</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@300;400;500;600;700&family=Barlow+Condensed:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --erv-blue:#1565C0;--erv-blue2:#1976D2;--erv-blue3:#1E88E5;--erv-light:#64B5F6;--erv-lighter:#BBDEFB;
+  --erv-gray:#78909C;--erv-dark:#37474F;--erv-darker:#263238;
+  --bg:#eef2f7;--bg2:#ffffff;--bg3:#e8eef5;
+  --border:#d0dce8;--border2:#b0c4d8;
+  --text:#1a2a3a;--text2:#4a6070;--text3:#8a9aaa;
+  --green:#2e7d32;--green-bg:#e8f5e9;
+  --red:#c62828;--red-bg:#ffebee;
+  --amber:#e65100;--amber-bg:#fff3e0;
+  --radius:8px;
+  --shadow:0 1px 4px rgba(21,101,192,.10);
+  --shadow2:0 2px 14px rgba(21,101,192,.14);
+  --sidebar-w:260px;
+  --sidebar-w-collapsed:56px;
+}
+body.sb-collapsed{--sidebar-w:var(--sidebar-w-collapsed)}
+body.sb-hidden{--sidebar-w:0px}
+body.sb-hidden .sidebar{transform:translateX(-100%)}
+body.sb-collapsed .sb-logo > div:last-child,
+body.sb-collapsed .sb-section,
+body.sb-collapsed .sb-company-name,
+body.sb-collapsed .sb-company-del,
+body.sb-collapsed .sb-footer,
+body.sb-collapsed .sb-btn-text{display:none}
+body.sb-collapsed .sb-company{justify-content:center;padding:9px 0}
+body.sb-collapsed .sb-company::before{content:attr(data-initial);display:inline-flex;width:26px;height:26px;align-items:center;justify-content:center;background:rgba(255,255,255,.1);border-radius:50%;font-weight:700;font-size:11px;color:#fff}
+body.sb-collapsed .sb-company.active::before{background:#90CAF9;color:var(--erv-blue)}
+body.sb-collapsed .sb-btn{padding:8px 0;justify-content:center}
+body.sb-collapsed .sb-logo{padding:16px 8px;justify-content:center}
+.sb-toggle{position:absolute;top:12px;right:-14px;width:28px;height:28px;background:var(--erv-blue);border:2px solid #fff;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:700;z-index:110;box-shadow:0 2px 6px rgba(0,0,0,.2);transition:all .15s}
+.sb-toggle:hover{background:var(--erv-blue2);transform:scale(1.08)}
+body.sb-hidden .sb-toggle{left:10px;right:auto;position:fixed;top:14px;transform:none;background:var(--erv-blue)}
+.sidebar{transition:transform .3s ease}
+body{font-family:'Barlow',sans-serif;background:var(--bg);color:var(--text);font-size:13px;line-height:1.5;overflow-x:hidden}
+h1,h2,h3{font-family:'Barlow Condensed',sans-serif}
+
+/* ============ LAYOUT ============ */
+.layout{display:grid;grid-template-columns:var(--sidebar-w) 1fr;min-height:100vh;transition:grid-template-columns .3s ease}
+
+/* ============ SIDEBAR ============ */
+.sidebar{background:#102a4a;color:#e8eef5;display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow:hidden}
+.sb-logo{padding:16px 18px;border-bottom:1px solid rgba(255,255,255,.1);display:flex;align-items:center;gap:10px}
+.logo-bars{display:flex;align-items:flex-end;gap:2px;height:28px}
+.logo-bar{width:5px;border-radius:2px 2px 0 0}
+.b1{height:10px;background:#64B5F6}.b2{height:14px;background:#42A5F5}.b3{height:18px;background:#1E88E5}.b4{height:22px;background:#90CAF9}.b5{height:28px;background:#fff}
+.logo-erv{font-family:'Barlow Condensed',sans-serif;font-size:24px;font-weight:700;color:#fff;letter-spacing:.04em;line-height:1}
+.logo-sub{font-size:9px;color:#BBDEFB;letter-spacing:.18em;text-transform:uppercase}
+.sb-section{padding:12px 14px 4px;font-size:10px;font-weight:700;color:#90CAF9;text-transform:uppercase;letter-spacing:.1em}
+.sb-companies{flex:1;overflow-y:auto;padding:4px 8px}
+.sb-company{padding:9px 12px;border-radius:6px;cursor:pointer;margin-bottom:3px;font-size:12px;display:flex;align-items:center;justify-content:space-between;transition:all .15s;color:#cdd9e8}
+.sb-company:hover{background:rgba(255,255,255,.07);color:#fff}
+.sb-company.active{background:var(--erv-blue);color:#fff;box-shadow:inset 3px 0 0 #90CAF9}
+.sb-company-name{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sb-company-del{opacity:0;font-size:11px;padding:2px 5px;border-radius:3px;transition:opacity .15s}
+.sb-company:hover .sb-company-del{opacity:.6}
+.sb-company-del:hover{background:#c62828;color:#fff;opacity:1 !important}
+.sb-empty{padding:20px 12px;color:#8090a5;text-align:center;font-size:11px;font-style:italic}
+.sb-actions{padding:10px 12px;border-top:1px solid rgba(255,255,255,.1);display:flex;flex-direction:column;gap:6px}
+.sb-btn{background:var(--erv-blue);color:#fff;border:none;padding:8px 12px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;font-family:'Barlow',sans-serif;transition:background .15s}
+.sb-btn:hover{background:var(--erv-blue2)}
+.sb-btn.ghost{background:transparent;border:1px solid rgba(255,255,255,.2);color:#cdd9e8}
+.sb-btn.ghost:hover{background:rgba(255,255,255,.08);color:#fff}
+.sb-footer{padding:12px 14px;border-top:1px solid rgba(255,255,255,.1);font-size:10px;color:#8090a5;text-align:center}
+
+/* ============ MAIN ============ */
+.main{display:flex;flex-direction:column;min-height:100vh}
+.topbar{background:var(--erv-blue);color:#fff;padding:0 24px;height:56px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 8px rgba(21,101,192,.25);position:sticky;top:0;z-index:100}
+.topbar-title{font-family:'Barlow Condensed',sans-serif;font-size:17px;font-weight:600}
+.topbar-meta{font-size:11px;color:#BBDEFB;display:flex;gap:14px;align-items:center}
+.topbar-input{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.3);color:#fff;font-size:12px;padding:5px 11px;border-radius:5px;outline:none;font-family:'Barlow',sans-serif}
+.topbar-input:focus{background:rgba(255,255,255,.2);border-color:rgba(255,255,255,.6)}
+.topbar-input::placeholder{color:rgba(255,255,255,.55)}
+
+.tabs{background:var(--erv-blue);padding:0 24px;display:flex;gap:2px;border-bottom:3px solid rgba(0,0,0,.12)}
+.tab{padding:9px 16px;font-size:13px;font-weight:600;cursor:pointer;color:rgba(255,255,255,.6);border-bottom:3px solid transparent;margin-bottom:-3px;transition:all .18s;font-family:'Barlow Condensed',sans-serif;font-size:14px;letter-spacing:.03em;white-space:nowrap}
+.tab:hover{color:rgba(255,255,255,.9)}
+.tab.active{color:#fff;border-bottom-color:#fff}
+
+.content{padding:18px 24px;flex:1}
+.pane{display:none}.pane.active{display:block}
+
+.welcome{max-width:600px;margin:80px auto;text-align:center;padding:40px;background:#fff;border-radius:12px;box-shadow:var(--shadow2)}
+.welcome h2{font-size:24px;color:var(--erv-blue);margin-bottom:12px}
+.welcome p{color:var(--text2);margin-bottom:20px;line-height:1.7}
+
+/* ============ CARDS ============ */
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:14px;box-shadow:var(--shadow)}
+.card-header{padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:linear-gradient(135deg,#f7fafd,#eef4fb);border-radius:var(--radius) var(--radius) 0 0}
+.card-title{font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:700;color:var(--erv-blue);display:flex;align-items:center;gap:8px}
+.card-title::before{content:'';display:inline-block;width:3px;height:15px;background:var(--erv-blue);border-radius:2px}
+.card-body{padding:14px}
+
+/* ============ INPUTS & BUTTONS ============ */
+input[type=text],input[type=number],select,input[type=month]{background:#fff;border:1px solid var(--border2);border-radius:5px;padding:5px 9px;font-size:12px;font-family:'Barlow',sans-serif;color:var(--text);outline:none;transition:border .15s}
+input[type=text]:focus,input[type=number]:focus,select:focus,input[type=month]:focus{border-color:var(--erv-blue);box-shadow:0 0 0 3px rgba(21,101,192,.1)}
+select{cursor:pointer}
+.btn{display:inline-flex;align-items:center;gap:5px;padding:6px 14px;border-radius:5px;border:none;cursor:pointer;font-size:12px;font-weight:600;font-family:'Barlow',sans-serif;transition:all .15s}
+.btn-primary{background:var(--erv-blue);color:#fff}.btn-primary:hover{background:var(--erv-blue2)}
+.btn-sm{padding:4px 10px;font-size:11px}
+.btn-ghost{background:transparent;border:1px solid var(--border2);color:var(--text2)}.btn-ghost:hover{border-color:var(--erv-blue);color:var(--erv-blue)}
+.btn-danger{background:transparent;border:1px solid #ffcdd2;color:var(--red)}.btn-danger:hover{background:var(--red-bg)}
+.btn-success{background:var(--green);color:#fff}.btn-success:hover{background:#1b5e20}
+
+/* ============ 12 MONTH GRID ============ */
+.scroll-x{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.month-grid{display:grid;min-width:1400px}
+.month-grid-12{grid-template-columns:240px repeat(12,minmax(96px,1fr)) 110px}
+.mg-head{background:var(--erv-blue);color:#fff;padding:8px 8px;font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:700;text-align:center;letter-spacing:.03em;position:sticky;top:0;z-index:2}
+.mg-head.first{text-align:left;padding-left:14px;position:sticky;left:0;z-index:3}
+.mg-head.last{background:#0d4a8f}
+.mg-cell{padding:6px 8px;border-bottom:1px solid var(--border);border-right:1px dashed #e5ecf4;font-family:'Barlow',sans-serif;font-size:12px;text-align:right;background:#fff;transition:background .12s}
+.mg-cell.first{text-align:left;padding-left:14px;font-weight:500;border-right:1px solid var(--border);background:#fff;position:sticky;left:0;z-index:1}
+.mg-cell.last{background:#eef4fb;font-weight:700;color:var(--erv-blue);border-right:none}
+.mg-cell.group-row{background:linear-gradient(135deg,#eef4fb,#f7fafd);font-weight:700;color:var(--erv-blue);cursor:pointer}
+.mg-cell.group-row.first{background:linear-gradient(135deg,#eef4fb,#f7fafd)}
+.mg-cell.group-row.last{background:#dde8f5;color:var(--erv-blue)}
+.mg-cell.revenue-row{background:#f1f8f2}
+.mg-cell.revenue-row.first{background:#f1f8f2}
+.mg-cell.total-row{background:var(--erv-blue);color:#fff;font-weight:700}
+.mg-cell.total-row.first{background:var(--erv-blue);color:#fff;font-weight:700}
+.mg-cell.total-row.last{background:#0d4a8f}
+.mg-cell.positive-row{background:#f1f8f2;color:var(--green);font-weight:600}
+.mg-cell.positive-row.first{background:#f1f8f2;color:var(--green);font-weight:700}
+.mg-cell.positive-row.last{background:#c8e6c9}
+.mg-cell.negative-row{background:#ffebee;color:var(--red);font-weight:600}
+.mg-cell.negative-row.first{background:#ffebee;color:var(--red);font-weight:700}
+.mg-cell.negative-row.last{background:#ffcdd2}
+.mg-cell input{width:90px;padding:3px 6px;font-size:11px;text-align:right;font-family:'Barlow',sans-serif;border:1px solid transparent;background:transparent;transition:all .1s;border-radius:3px}
+.mg-cell input:hover{border-color:var(--border2);background:#f7fafd}
+.mg-cell input:focus{border-color:var(--erv-blue);background:#fff;box-shadow:0 0 0 2px rgba(21,101,192,.1)}
+.mg-cell.editable{cursor:pointer}
+.mg-cell.editable:hover{background:#f0f7ff}
+
+.mg-expand{width:14px;height:14px;display:inline-flex;align-items:center;justify-content:center;background:var(--erv-blue);color:#fff;border-radius:3px;font-size:9px;margin-right:6px;cursor:pointer}
+
+.prem-badge{display:inline-flex;align-items:center;gap:3px;padding:1px 6px;border-radius:10px;font-size:9px;font-weight:700;cursor:pointer;transition:all .1s;border:1px solid;margin-left:4px}
+.prem-fixed{background:#e3f2fd;color:var(--erv-blue);border-color:var(--erv-lighter)}
+.prem-pct{background:#e8f5e9;color:var(--green);border-color:#c8e6c9}
+.prem-pct-rev{background:#fff3e0;color:var(--amber);border-color:#ffe0b2}
+.prem-badge:hover{filter:brightness(.93);transform:scale(1.05)}
+
+.val-input-cell{position:relative}
+.val-input-cell input{width:100%}
+
+.mg-month-badge{display:inline-block;padding:1px 5px;background:rgba(255,255,255,.2);border-radius:3px;font-size:9px;margin-top:2px}
+
+/* Monthly value cell with mode badge */
+.mc-wrap{display:flex;align-items:center;justify-content:flex-end;gap:3px}
+.mc-mode{font-size:8px;font-weight:700;padding:1px 3px;border-radius:2px;cursor:pointer;white-space:nowrap}
+.mc-mode.fixed{background:#e3f2fd;color:var(--erv-blue)}
+.mc-mode.pct_rev{background:#fff3e0;color:var(--amber)}
+.mc-mode.pct_group{background:#e8f5e9;color:var(--green)}
+
+/* ============ TAGS & MISC ============ */
+.tag{display:inline-block;padding:1px 7px;border-radius:10px;font-size:10px;font-weight:700}
+.tag-blue{background:#e3f2fd;color:var(--erv-blue)}
+.tag-green{background:#e8f5e9;color:var(--green)}
+.tag-red{background:#ffebee;color:var(--red)}
+.tag-amber{background:#fff3e0;color:var(--amber)}
+.flex{display:flex}.items-center{align-items:center}.gap-8{gap:8px}.gap-4{gap:4px}.gap-14{gap:14px}.justify-between{justify-content:space-between}
+.mb-8{margin-bottom:8px}.mb-12{margin-bottom:12px}.mb-16{margin-bottom:16px}
+.section-title{font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:700;color:var(--erv-blue);margin-bottom:4px}
+.section-sub{font-size:11px;color:var(--text3);margin-bottom:16px}
+
+/* KPI */
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px}
+.kpi{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:14px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--kpi-color,var(--erv-blue))}
+.kpi-label{font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.09em;margin-bottom:7px}
+.kpi-value{font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:700;color:var(--erv-blue);line-height:1}
+.kpi-sub{font-size:10px;color:var(--text3);margin-top:5px}
+.kpi.green{--kpi-color:var(--green)}.kpi.green .kpi-value{color:var(--green)}
+.kpi.red{--kpi-color:var(--red)}.kpi.red .kpi-value{color:var(--red)}
+.kpi.amber{--kpi-color:var(--amber)}.kpi.amber .kpi-value{color:var(--amber)}
+
+.chart-wrap{position:relative;height:230px}
+
+/* ============ MODAL ============ */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:300;display:flex;align-items:center;justify-content:center}
+.modal{background:#fff;border-radius:12px;padding:26px;width:460px;max-height:85vh;overflow-y:auto;box-shadow:0 12px 40px rgba(21,101,192,.22)}
+.modal-title{font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:700;color:var(--erv-blue);margin-bottom:18px;padding-bottom:12px;border-bottom:2px solid var(--erv-lighter)}
+.modal-row{margin-bottom:14px}
+.modal-label{font-size:11px;font-weight:700;color:var(--text2);margin-bottom:5px;text-transform:uppercase;letter-spacing:.07em}
+.modal-row input,.modal-row select{width:100%;padding:7px 10px}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:22px;padding-top:14px;border-top:1px solid var(--border)}
+
+/* ============ PE METER ============ */
+.pe-meter{background:linear-gradient(135deg,#e3f2fd,#f0f7ff);border:1px solid #bbdefb;border-radius:var(--radius);padding:16px;margin-bottom:14px}
+.pe-title{font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:700;color:var(--erv-blue);margin-bottom:12px}
+.pe-bar-wrap{background:#dde5ef;border-radius:20px;height:18px;overflow:hidden;margin-bottom:8px}
+.pe-bar-fill{height:100%;border-radius:20px;transition:width .6s cubic-bezier(.4,0,.2,1)}
+.pe-bar-blue{background:linear-gradient(90deg,var(--erv-blue),var(--erv-light))}
+.pe-bar-amber{background:linear-gradient(90deg,#e65100,#ffa726)}
+.pe-bar-red{background:linear-gradient(90deg,#c62828,#ef9a9a)}
+.pe-labels{display:flex;justify-content:space-between;font-size:11px;color:var(--text3);margin-bottom:12px}
+.pe-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.pe-item{background:#fff;border:1px solid var(--border);border-radius:6px;padding:10px}
+.pe-item-label{font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em}
+.pe-item-val{font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:700;color:var(--erv-blue);margin-top:2px}
+.pe-item-sub{font-size:10px;color:var(--text3);margin-top:2px}
+
+.regime-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:14px}
+.regime-card{background:#fff;border:2px solid var(--border);border-radius:var(--radius);padding:14px;cursor:pointer;transition:all .18s}
+.regime-card.active{border-color:var(--erv-blue);background:#f0f7ff;box-shadow:0 0 0 3px rgba(21,101,192,.1)}
+.regime-card:hover:not(.active){border-color:var(--erv-light)}
+.regime-name{font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:700;color:var(--erv-blue);margin-bottom:4px}
+.regime-imposto{font-size:24px;font-weight:700;color:var(--text);font-family:'Barlow Condensed',sans-serif;line-height:1.1}
+.regime-detail{font-size:11px;color:var(--text3);margin-top:6px;line-height:1.5}
+.regime-badge{display:inline-block;padding:2px 9px;border-radius:10px;font-size:10px;font-weight:700;margin-top:8px}
+.badge-best{background:#e8f5e9;color:var(--green)}
+.badge-worst{background:#ffebee;color:var(--red)}
+.badge-mid{background:#fff3e0;color:var(--amber)}
+
+::-webkit-scrollbar{width:8px;height:8px}
+
+/* DRE - Análise Vertical (% inline) */
+.dre-av{display:inline-block;font-size:9px;color:var(--text3);font-weight:500;margin-left:4px;padding:1px 4px;background:rgba(0,0,0,.04);border-radius:3px}
+.dre-av-sub{font-size:8px;background:rgba(21,101,192,.08);color:var(--erv-blue)}
+.dre-av-w{display:inline-block;font-size:9px;color:rgba(255,255,255,.85);font-weight:500;margin-left:4px;padding:1px 4px;background:rgba(255,255,255,.15);border-radius:3px}
+.dre-toggle-icon{display:inline-block;width:12px;font-size:8px;color:var(--erv-blue);margin-right:4px}
+.dre-expandable:hover{background:#e8f0f8 !important}
+.dre-item-row{animation:slideDown .2s ease}
+@keyframes slideDown{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
+
+/* MARKUP TAB */
+.mk-layout{display:grid;grid-template-columns:380px 1fr;gap:16px}
+.mk-form{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow)}
+.mk-form-title{font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:700;color:var(--erv-blue);margin-bottom:14px;padding-bottom:10px;border-bottom:2px solid var(--erv-lighter)}
+.mk-group{margin-bottom:12px}
+.mk-group-title{font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:5px}
+.mk-field{margin-bottom:10px}
+.mk-field-label{font-size:11px;color:var(--text2);margin-bottom:3px;display:flex;justify-content:space-between}
+.mk-field-label span{color:var(--text3)}
+.mk-field input{width:100%;padding:7px 10px;font-size:13px}
+.mk-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+
+.mk-result{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow)}
+.mk-result-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px;padding-bottom:14px;border-bottom:2px solid var(--erv-lighter)}
+.mk-product-name{font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:700;color:var(--erv-blue);line-height:1.2}
+.mk-product-tag{font-size:11px;color:var(--text3);margin-top:2px}
+
+.mk-price-card{background:linear-gradient(135deg,var(--erv-blue),var(--erv-blue2));color:#fff;border-radius:10px;padding:24px;text-align:center;margin-bottom:18px}
+.mk-price-label{font-size:11px;text-transform:uppercase;letter-spacing:.1em;opacity:.85;font-weight:600}
+.mk-price-value{font-family:'Barlow Condensed',sans-serif;font-size:42px;font-weight:700;line-height:1;margin:8px 0 4px}
+.mk-price-sub{font-size:12px;opacity:.9}
+
+.mk-breakdown{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:18px}
+.mk-bd-item{background:#f7fafd;border:1px solid var(--border);border-radius:6px;padding:10px 12px}
+.mk-bd-label{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;font-weight:700}
+.mk-bd-val{font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:700;color:var(--text);margin-top:3px}
+.mk-bd-pct{font-size:10px;color:var(--text3);margin-top:2px}
+
+.mk-stack{margin-bottom:16px}
+.mk-stack-title{font-size:12px;font-weight:700;color:var(--erv-blue);margin-bottom:8px;font-family:'Barlow Condensed',sans-serif;letter-spacing:.04em}
+.mk-stack-bar{display:flex;height:40px;border-radius:6px;overflow:hidden;border:1px solid var(--border)}
+.mk-seg{display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:700;padding:2px;transition:all .3s;position:relative}
+.mk-seg-custo{background:#ef5350}
+.mk-seg-imposto{background:#FFA726}
+.mk-seg-desp{background:#1E88E5}
+.mk-seg-lucro{background:#43A047}
+.mk-stack-labels{display:flex;margin-top:6px;gap:12px;flex-wrap:wrap;font-size:11px}
+.mk-stack-leg{display:flex;align-items:center;gap:4px;color:var(--text2)}
+.mk-stack-leg::before{content:'';width:10px;height:10px;border-radius:2px;background:var(--leg-color)}
+
+.mk-kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}
+.mk-kpi{background:#fff;border:1px solid var(--border);border-radius:6px;padding:10px;text-align:center;position:relative;overflow:hidden}
+.mk-kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--k,var(--erv-blue))}
+.mk-kpi-label{font-size:10px;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:.06em}
+.mk-kpi-val{font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:700;color:var(--erv-blue);margin-top:3px}
+
+.mk-list{margin-top:14px;border-top:1px solid var(--border);padding-top:14px}
+.mk-list-title{font-size:12px;font-weight:700;color:var(--erv-blue);margin-bottom:10px;font-family:'Barlow Condensed',sans-serif;letter-spacing:.04em;display:flex;justify-content:space-between;align-items:center}
+.mk-prod-row{display:grid;grid-template-columns:1fr 90px 90px 90px 80px;gap:8px;padding:8px 10px;border:1px solid var(--border);border-radius:5px;margin-bottom:4px;align-items:center;font-size:12px;cursor:pointer;transition:all .15s;background:#fff}
+.mk-prod-row:hover{border-color:var(--erv-light);background:#f7fafd}
+.mk-prod-row.active{border-color:var(--erv-blue);background:#eef4fb;box-shadow:0 0 0 2px rgba(21,101,192,.1)}
+.mk-prod-name{font-weight:600;color:var(--text)}
+.mk-prod-val{text-align:right;font-family:'Barlow',sans-serif;font-weight:500}
+.mk-prod-del{text-align:center;color:var(--red);font-size:14px;cursor:pointer;padding:2px 5px;border-radius:3px}
+.mk-prod-del:hover{background:var(--red-bg)}
+.mk-empty-prod{text-align:center;padding:20px;color:var(--text3);font-size:12px;font-style:italic}
+
+.mk-warn{background:#ffebee;border-left:4px solid var(--red);padding:10px 14px;border-radius:0 6px 6px 0;margin-bottom:14px;font-size:12px;color:var(--text)}
+.mk-ok{background:#e8f5e9;border-left:4px solid var(--green);padding:10px 14px;border-radius:0 6px 6px 0;margin-bottom:14px;font-size:12px;color:var(--text)}
+::-webkit-scrollbar-track{background:#dde5ef}
+::-webkit-scrollbar-thumb{background:var(--erv-light);border-radius:4px}
+::-webkit-scrollbar-thumb:hover{background:var(--erv-blue)}
+
+@media print {
+  .sidebar,.tabs,.btn{display:none !important}
+  .pane{display:block !important}
+  body{background:#fff}
+}
+
+.toast{position:fixed;bottom:20px;right:20px;background:#2e7d32;color:#fff;padding:12px 18px;border-radius:6px;font-size:13px;z-index:400;box-shadow:0 6px 20px rgba(0,0,0,.2);animation:slideIn .3s ease}
+@keyframes slideIn{from{transform:translateX(400px);opacity:0}to{transform:translateX(0);opacity:1}}
+</style>
+</head>
+<body>
+
+<div class="layout">
+
+<!-- ============ SIDEBAR ============ -->
+<aside class="sidebar">
+  <div class="sb-toggle" onclick="toggleSidebar()" title="Recolher/Expandir">
+    <span id="sb-toggle-icon">‹</span>
+  </div>
+  <div class="sb-logo">
+    <div class="logo-bars">
+      <div class="logo-bar b1"></div><div class="logo-bar b2"></div>
+      <div class="logo-bar b3"></div><div class="logo-bar b4"></div><div class="logo-bar b5"></div>
+    </div>
+    <div>
+      <div class="logo-erv">ERV</div>
+      <div class="logo-sub">Consultoria</div>
+    </div>
+  </div>
+  <div class="sb-section">Empresas cadastradas</div>
+  <div class="sb-companies" id="sb-companies"></div>
+  <div class="sb-actions">
+    <button class="sb-btn" onclick="openNewCompany()" title="Nova empresa"><span class="sb-btn-icon">+</span><span class="sb-btn-text"> Nova empresa</span></button>
+    <button class="sb-btn ghost" onclick="openCloudConfig()" title="Sincronizar na nuvem"><span class="sb-btn-icon">☁</span><span class="sb-btn-text"> Conectar nuvem</span></button>
+    <button class="sb-btn ghost" onclick="exportBackup()" title="Exportar backup"><span class="sb-btn-icon">⬇</span><span class="sb-btn-text"> Exportar backup</span></button>
+    <button class="sb-btn ghost" onclick="document.getElementById('import-file').click()" title="Importar backup"><span class="sb-btn-icon">⬆</span><span class="sb-btn-text"> Importar backup</span></button>
+    <input type="file" id="import-file" accept=".json" style="display:none" onchange="importBackup(event)">
+  </div>
+  <div class="sb-footer">Versão 2.1 · Dados locais</div>
+</aside>
+
+<!-- ============ MAIN ============ -->
+<main class="main">
+  <div class="topbar">
+    <div>
+      <div class="topbar-title">Simulador de Ponto de Equilíbrio</div>
+    </div>
+    <div class="topbar-meta" id="topbar-meta">
+      <span>Nenhuma empresa selecionada</span>
+    </div>
+  </div>
+  <div class="tabs" id="tabs">
+    <div class="tab active" onclick="showTab('config',this)">⚙️ Configuração</div>
+    <div class="tab" onclick="showTab('faturamento',this)">💰 Faturamento 12M</div>
+    <div class="tab" onclick="showTab('premissas',this)">📋 Premissas 12M</div>
+    <div class="tab" onclick="showTab('dre',this)">📊 DRE Consolidado</div>
+    <div class="tab" onclick="showTab('markup',this)">🏷️ Markup de Produtos</div>
+    <div class="tab" onclick="showTab('pe',this)">⚖️ Ponto de Equilíbrio</div>
+    <div class="tab" onclick="showTab('tributos',this)">🏛️ Regime Tributário</div>
+    <div class="tab" onclick="showTab('dashboard',this)">📈 Dashboard</div>
+  </div>
+
+  <div class="content" id="content">
+    <div class="welcome" id="welcome">
+      <h2>Bem-vindo ao Simulador ERV</h2>
+      <p>Crie a primeira empresa para começar a simulação. Você poderá cadastrar quantas empresas quiser — todas ficam salvas localmente no navegador para acesso posterior.</p>
+      <button class="btn btn-primary" onclick="openNewCompany()" style="font-size:14px;padding:10px 20px">+ Criar primeira empresa</button>
+    </div>
+
+    <!-- CONFIG PANE -->
+    <div class="pane" id="pane-config"></div>
+    <!-- FATURAMENTO PANE -->
+    <div class="pane" id="pane-faturamento"></div>
+    <!-- PREMISSAS PANE -->
+    <div class="pane" id="pane-premissas"></div>
+    <!-- DRE PANE -->
+    <div class="pane" id="pane-dre"></div>
+    <!-- MARKUP PANE -->
+    <div class="pane" id="pane-markup"></div>
+    <!-- PE PANE -->
+    <div class="pane" id="pane-pe"></div>
+    <!-- TRIBUTOS PANE -->
+    <div class="pane" id="pane-tributos"></div>
+    <!-- DASHBOARD PANE -->
+    <div class="pane" id="pane-dashboard"></div>
+  </div>
+</main>
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modal" style="display:none" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <div class="modal-title" id="modal-title">Modal</div>
+    <div id="modal-body"></div>
+    <div class="modal-actions" id="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveModal()">✓ Salvar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// TEMPLATE DE PREMISSAS PADRÃO (baseado na planilha do usuário)
+// ============================================================
+const TEMPLATE_DEFAULT = [
+  {id:'g_impostos', label:'Impostos sobre Vendas', type:'deduction', editable:true, items:[
+    {id:'i_icms', label:'ICMS', mode:'pct_rev', value:6},
+    {id:'i_ipi', label:'IPI', mode:'pct_rev', value:2.8},
+    {id:'i_pis', label:'PIS', mode:'pct_rev', value:1.65},
+    {id:'i_cofins', label:'COFINS', mode:'pct_rev', value:7.6},
+    {id:'i_iss', label:'ISS', mode:'pct_rev', value:0},
+    {id:'i_inss_fornec', label:'INSS Fornecedores', mode:'pct_rev', value:0}
+  ]},
+  {id:'g_comercial', label:'Despesas Comerciais', type:'cost', editable:true, items:[
+    {id:'i_comissao', label:'Comissões', mode:'pct_rev', value:1},
+    {id:'i_bv', label:'B.V. / Bonificações', mode:'pct_rev', value:0},
+    {id:'i_logistica', label:'Logística / Frete', mode:'pct_rev', value:1.5},
+    {id:'i_marketing', label:'Marketing / Publicidade', mode:'pct_rev', value:1}
+  ]},
+  {id:'g_cmv', label:'CMV / CSV — Custos dos Produtos/Serviços', type:'cost', editable:true, items:[
+    {id:'i_cmv', label:'Custo de mercadorias/matéria-prima', mode:'pct_rev', value:35},
+    {id:'i_mat_indireto', label:'Material indireto produção', mode:'pct_rev', value:4},
+    {id:'i_manut_ind', label:'Manutenção industrial', mode:'pct_rev', value:0.7}
+  ]},
+  {id:'g_pessoal', label:'Despesas com Pessoal', type:'cost', editable:true, items:[
+    {id:'i_salario', label:'Salário bruto', mode:'fixed', value:15000},
+    {id:'i_inss_patr', label:'INSS patronal', mode:'pct_group', value:27},
+    {id:'i_fgts', label:'FGTS (8%)', mode:'pct_group', value:8},
+    {id:'i_prov_13', label:'Provisão 13º salário', mode:'pct_group', value:8.33},
+    {id:'i_prov_ferias', label:'Provisão férias + 1/3', mode:'pct_group', value:11.11},
+    {id:'i_prov_rescisao', label:'Provisão rescisão', mode:'pct_group', value:4},
+    {id:'i_vale_alim', label:'Vale alimentação', mode:'pct_group', value:6},
+    {id:'i_vale_transp', label:'Vale transporte', mode:'pct_group', value:3},
+    {id:'i_insalubridade', label:'Insalubridade / periculosidade', mode:'pct_group', value:0},
+    {id:'i_pj', label:'Pró-labore / PJ', mode:'fixed', value:0}
+  ]},
+  {id:'g_financ', label:'Despesas Financeiras', type:'cost', editable:true, items:[
+    {id:'i_desconto', label:'Operações de desconto', mode:'pct_rev', value:0},
+    {id:'i_pos', label:'Operações pós-fixadas', mode:'pct_rev', value:0},
+    {id:'i_banc', label:'Despesas bancárias', mode:'fixed', value:500},
+    {id:'i_fomento', label:'Fomento', mode:'pct_rev', value:0},
+    {id:'i_emp', label:'Parcelas de empréstimos', mode:'fixed', value:0},
+    {id:'i_acordo', label:'Acordos / renegociações', mode:'fixed', value:0},
+    {id:'i_juros', label:'Juros / IOF', mode:'pct_rev', value:0.3}
+  ]},
+  {id:'g_admin', label:'Despesas Administrativas', type:'cost', editable:true, items:[
+    {id:'i_aluguel', label:'Aluguel / locação', mode:'fixed', value:5000},
+    {id:'i_util', label:'Utilidades (água, luz, internet)', mode:'fixed', value:2000},
+    {id:'i_contab', label:'Contabilidade', mode:'fixed', value:1500},
+    {id:'i_ti', label:'TI / Sistemas', mode:'fixed', value:800},
+    {id:'i_material_esc', label:'Material de escritório', mode:'fixed', value:300},
+    {id:'i_adm_outros', label:'Outros administrativos', mode:'pct_rev', value:1}
+  ]}
+];
+
+// ============================================================
+// STATE
+// ============================================================
+let state = {
+  companies: [],
+  activeId: null
+};
+let _modalSave = null;
+let charts = {};
+const MONTHS_PT = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+
+// ============================================================
+// PERSISTENCE
+// ============================================================
+function saveState(){
+  try {
+    localStorage.setItem('erv_simulador_v2', JSON.stringify(state));
+  } catch(e){ console.error('Erro ao salvar:',e); }
+}
+function loadState(){
+  try {
+    const raw = localStorage.getItem('erv_simulador_v2');
+    if(raw) state = JSON.parse(raw);
+  } catch(e){ console.error('Erro ao carregar:',e); }
+}
+
+function exportBackup(){
+  const blob = new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'erv_consultoria_backup_'+new Date().toISOString().slice(0,10)+'.json';
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('Backup exportado!');
+}
+
+function importBackup(evt){
+  const f = evt.target.files[0]; if(!f) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const imported = JSON.parse(e.target.result);
+      if(confirm('Importar backup? Os dados atuais serão substituídos.')){
+        state = imported;
+        saveState();
+        renderAll();
+        toast('Backup importado com sucesso!');
+      }
+    } catch(err){ alert('Arquivo inválido.'); }
+  };
+  reader.readAsText(f);
+}
+
+function toast(msg){
+  const t = document.createElement('div');
+  t.className = 'toast';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(()=>t.remove(), 2500);
+}
+
+// ============================================================
+// COMPANY MANAGEMENT
+// ============================================================
+function createCompany(name, startMonth){
+  const [y,m] = startMonth.split('-').map(Number);
+  const months = [];
+  for(let i=0;i<12;i++){
+    const d = new Date(y, m-1+i, 1);
+    months.push({
+      label: MONTHS_PT[d.getMonth()]+'/'+String(d.getFullYear()).slice(2),
+      year: d.getFullYear(),
+      month: d.getMonth()+1,
+      diasUteis: 22,
+      faturamento: 100000
+    });
+  }
+  // Deep clone do template
+  const groups = JSON.parse(JSON.stringify(TEMPLATE_DEFAULT));
+  // Inicializar monthly overrides
+  groups.forEach(g => g.items.forEach(it => {
+    it.monthly = Array(12).fill(null);
+    it.computed = Array(12).fill(0);
+  }));
+  return {
+    id: 'c_'+Date.now(),
+    name: name || 'Nova Empresa',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    startMonth,
+    regime: 'simples',
+    atividade: 'comercio',
+    months,
+    groups
+  };
+}
+
+function getActive(){
+  return state.companies.find(c => c.id === state.activeId);
+}
+
+function deleteCompany(id, evt){
+  if(evt){evt.stopPropagation();}
+  const c = state.companies.find(x => x.id===id);
+  if(!c) return;
+  if(!confirm('Deletar "'+c.name+'"? Esta ação não pode ser desfeita.')) return;
+  state.companies = state.companies.filter(x => x.id !== id);
+  if(state.activeId === id) state.activeId = state.companies[0]?.id || null;
+  saveState(); renderAll();
+}
+
+function selectCompany(id){
+  state.activeId = id;
+  saveState();
+  renderAll();
+}
+
+function openNewCompany(){
+  const today = new Date();
+  const defMonth = today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0');
+  openModal('Nova empresa', `
+    <div class="modal-row">
+      <div class="modal-label">Nome da empresa</div>
+      <input type="text" id="m-name" placeholder="Ex: São João Calhas Ltda" value="">
+    </div>
+    <div class="modal-row">
+      <div class="modal-label">Mês inicial da projeção</div>
+      <input type="month" id="m-start" value="${defMonth}">
+    </div>
+    <div style="font-size:11px;color:var(--text3);padding:10px;background:#f7fafd;border-radius:5px">
+      A nova empresa será criada com o template de premissas padrão ERV (impostos, pessoal, financeiro, admin, comercial e CMV). 
+      Você poderá adicionar, remover e editar qualquer premissa depois.
+    </div>
+  `, () => {
+    const name = document.getElementById('m-name').value.trim() || 'Nova Empresa';
+    const sm = document.getElementById('m-start').value || defMonth;
+    const newCo = createCompany(name, sm);
+    state.companies.push(newCo);
+    state.activeId = newCo.id;
+    saveState(); renderAll();
+    toast('Empresa "'+name+'" criada!');
+  });
+}
+
+// ============================================================
+// CALC ENGINE (MONTHLY)
+// ============================================================
+function getItemPremise(it, monthIdx){
+  const o = it.monthly && it.monthly[monthIdx];
+  return {
+    mode: (o && o.mode) || it.mode,
+    value: (o && o.value !== undefined && o.value !== null) ? o.value : it.value
+  };
+}
+
+function recalc(){
+  const c = getActive(); if(!c) return;
+  c.groups.forEach(g => {
+    g.items.forEach(it => {
+      if(!it.monthly) it.monthly = Array(12).fill(null);
+      if(!it.computed) it.computed = Array(12).fill(0);
+    });
+  });
+  for(let mi = 0; mi < 12; mi++){
+    const fat = c.months[mi].faturamento || 0;
+    c.groups.forEach(g => {
+      // Pass 1: fixed & pct_rev
+      g.items.forEach(it => {
+        const p = getItemPremise(it, mi);
+        if(p.mode === 'fixed') it.computed[mi] = p.value;
+        else if(p.mode === 'pct_rev') it.computed[mi] = fat * p.value / 100;
+      });
+      // Pass 2: pct_group (over non-pct_group base)
+      const base = g.items.filter(it => {
+        const p = getItemPremise(it, mi); return p.mode !== 'pct_group';
+      }).reduce((s,it) => s + it.computed[mi], 0);
+      g.items.forEach(it => {
+        const p = getItemPremise(it, mi);
+        if(p.mode === 'pct_group') it.computed[mi] = base * p.value / 100;
+      });
+    });
+  }
+  c.updatedAt = new Date().toISOString();
+  saveState();
+}
+
+function getMonthRevenue(mi){ const c=getActive(); return c?c.months[mi].faturamento||0:0; }
+function getGroupMonthTotal(gid, mi){
+  const c = getActive(); if(!c) return 0;
+  const g = c.groups.find(x => x.id===gid);
+  return g ? g.items.reduce((s,it)=>s+(it.computed[mi]||0), 0) : 0;
+}
+function getMonthDeducoes(mi){
+  const c = getActive(); if(!c) return 0;
+  return c.groups.filter(g => g.type==='deduction').reduce((s,g) => s + g.items.reduce((ss,it)=>ss+(it.computed[mi]||0),0), 0);
+}
+function getMonthCMV(mi){ return getGroupMonthTotal('g_cmv', mi); }
+function getMonthRecLiq(mi){ return getMonthRevenue(mi) - getMonthDeducoes(mi); }
+function getMonthMC(mi){ return getMonthRecLiq(mi) - getMonthCMV(mi); }
+function getMonthCF(mi){
+  const c = getActive(); if(!c) return 0;
+  return c.groups.filter(g => g.type==='cost' && g.id!=='g_cmv').reduce((s,g) => s + g.items.reduce((ss,it)=>ss+(it.computed[mi]||0),0), 0);
+}
+function getMonthLL(mi){ return getMonthMC(mi) - getMonthCF(mi); }
+function getMonthMCPct(mi){ const r=getMonthRecLiq(mi); return r>0?getMonthMC(mi)/r*100:0; }
+function getMonthPEcont(mi){ const mc=getMonthMCPct(mi); return mc>0?getMonthCF(mi)/(mc/100):0; }
+
+// Annual sums
+function sum12(fn){ let s=0; for(let i=0;i<12;i++) s+=fn(i); return s; }
+function getAnnualRevenue(){ return sum12(getMonthRevenue); }
+function getAnnualDeducoes(){ return sum12(getMonthDeducoes); }
+function getAnnualCMV(){ return sum12(getMonthCMV); }
+function getAnnualRecLiq(){ return sum12(getMonthRecLiq); }
+function getAnnualMC(){ return sum12(getMonthMC); }
+function getAnnualCF(){ return sum12(getMonthCF); }
+function getAnnualLL(){ return sum12(getMonthLL); }
+function getAnnualMCPct(){ const r=getAnnualRecLiq(); return r>0?getAnnualMC()/r*100:0; }
+function getAnnualPEcont(){ const mc=getAnnualMCPct(); return mc>0?getAnnualCF()/(mc/100):0; }
+
+// ============================================================
+// RENDER: SIDEBAR
+// ============================================================
+function renderSidebar(){
+  const el = document.getElementById('sb-companies');
+  if(state.companies.length === 0){
+    el.innerHTML = '<div class="sb-empty">Nenhuma empresa cadastrada.<br>Clique em "Nova empresa" para começar.</div>';
+    return;
+  }
+  el.innerHTML = state.companies.map(c => {
+    const initial = (c.name||'?').trim().charAt(0).toUpperCase();
+    return `
+    <div class="sb-company ${c.id===state.activeId?'active':''}" data-initial="${initial}" onclick="selectCompany('${c.id}')" title="${c.name}">
+      <span class="sb-company-name">${c.name}</span>
+      <span class="sb-company-del" onclick="deleteCompany('${c.id}',event)">✕</span>
+    </div>
+  `;}).join('');
+}
+
+function renderTopbar(){
+  const c = getActive();
+  const el = document.getElementById('topbar-meta');
+  if(!c){ el.innerHTML = '<span>Nenhuma empresa selecionada</span>'; return; }
+  const updated = new Date(c.updatedAt).toLocaleDateString('pt-BR');
+  el.innerHTML = `
+    <span><strong style="color:#fff">${c.name}</strong></span>
+    <span>·</span>
+    <span>Início: ${c.months[0].label} → ${c.months[11].label}</span>
+    <span>·</span>
+    <span>Atualizado: ${updated}</span>
+  `;
+}
+
+// ============================================================
+// RENDER: CONFIG PANE
+// ============================================================
+function renderConfig(){
+  const c = getActive(); if(!c) return;
+  const el = document.getElementById('pane-config');
+  el.innerHTML = `
+    <div class="section-title">Configuração — ${c.name}</div>
+    <div class="section-sub">Dados gerais da empresa. Ajuste nome, regime tributário e período de projeção.</div>
+    <div class="card">
+      <div class="card-header"><div class="card-title">Dados da empresa</div></div>
+      <div class="card-body">
+        <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:14px">
+          <div>
+            <div class="modal-label">Nome da empresa</div>
+            <input type="text" id="cfg-name" value="${c.name}" style="width:100%" oninput="updateCompany('name',this.value)">
+          </div>
+          <div>
+            <div class="modal-label">Mês inicial</div>
+            <input type="month" id="cfg-start" value="${c.startMonth}" style="width:100%" onchange="changeStartMonth(this.value)">
+          </div>
+          <div>
+            <div class="modal-label">Regime tributário</div>
+            <select id="cfg-regime" style="width:100%" onchange="updateCompany('regime',this.value)">
+              <option value="simples" ${c.regime==='simples'?'selected':''}>Simples Nacional</option>
+              <option value="presumido" ${c.regime==='presumido'?'selected':''}>Lucro Presumido</option>
+              <option value="real" ${c.regime==='real'?'selected':''}>Lucro Real</option>
+            </select>
+          </div>
+          <div>
+            <div class="modal-label">Atividade</div>
+            <select id="cfg-ativ" style="width:100%" onchange="updateCompany('atividade',this.value)">
+              <option value="comercio" ${c.atividade==='comercio'?'selected':''}>Comércio</option>
+              <option value="industria" ${c.atividade==='industria'?'selected':''}>Indústria</option>
+              <option value="servicos" ${c.atividade==='servicos'?'selected':''}>Serviços</option>
+              <option value="misto" ${c.atividade==='misto'?'selected':''}>Misto</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="card-title">Período de projeção</div></div>
+      <div class="card-body">
+        <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px;font-size:12px">
+          ${c.months.map((m,i) => `
+            <div style="padding:8px;background:${i%2?'#f7fafd':'#fff'};border:1px solid var(--border);border-radius:5px;text-align:center">
+              <div style="font-weight:700;color:var(--erv-blue);font-size:13px">${m.label}</div>
+              <div style="font-size:10px;color:var(--text3)">${MONTHS_PT[m.month-1]} ${m.year}</div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="card-title">Ações rápidas</div></div>
+      <div class="card-body flex gap-8">
+        <button class="btn btn-ghost" onclick="duplicateCompany()">📄 Duplicar empresa</button>
+        <button class="btn btn-ghost" onclick="resetTemplate()">↻ Restaurar template padrão de premissas</button>
+        <button class="btn btn-danger" onclick="deleteCompany('${c.id}')">🗑 Deletar esta empresa</button>
+      </div>
+    </div>
+  `;
+}
+
+function updateCompany(field, value){
+  const c = getActive(); if(!c) return;
+  c[field] = value;
+  c.updatedAt = new Date().toISOString();
+  saveState();
+  renderSidebar(); renderTopbar();
+}
+
+function changeStartMonth(sm){
+  const c = getActive(); if(!c) return;
+  c.startMonth = sm;
+  const [y,m] = sm.split('-').map(Number);
+  for(let i=0;i<12;i++){
+    const d = new Date(y, m-1+i, 1);
+    c.months[i].label = MONTHS_PT[d.getMonth()]+'/'+String(d.getFullYear()).slice(2);
+    c.months[i].year = d.getFullYear();
+    c.months[i].month = d.getMonth()+1;
+  }
+  saveState(); renderAll();
+}
+
+function duplicateCompany(){
+  const c = getActive(); if(!c) return;
+  const copy = JSON.parse(JSON.stringify(c));
+  copy.id = 'c_'+Date.now();
+  copy.name = c.name + ' (cópia)';
+  copy.createdAt = new Date().toISOString();
+  state.companies.push(copy);
+  state.activeId = copy.id;
+  saveState(); renderAll();
+  toast('Empresa duplicada!');
+}
+
+function resetTemplate(){
+  const c = getActive(); if(!c) return;
+  if(!confirm('Restaurar template padrão de premissas? Premissas customizadas desta empresa serão perdidas.')) return;
+  c.groups = JSON.parse(JSON.stringify(TEMPLATE_DEFAULT));
+  c.groups.forEach(g => g.items.forEach(it => {
+    it.monthly = Array(12).fill(null);
+    it.computed = Array(12).fill(0);
+  }));
+  recalc(); renderAll();
+}
+
+// ============================================================
+// RENDER: FATURAMENTO
+// ============================================================
+function renderFaturamento(){
+  const c = getActive(); if(!c) return;
+  const el = document.getElementById('pane-faturamento');
+  let html = `
+    <div class="flex items-center justify-between mb-12">
+      <div>
+        <div class="section-title">Projeção de Faturamento — 12 meses</div>
+        <div class="section-sub">Informe o faturamento projetado e dias úteis de cada mês. Use os botões rápidos para distribuir valores.</div>
+      </div>
+      <div class="flex gap-8">
+        <button class="btn btn-ghost btn-sm" onclick="bulkFaturamento()">≡ Distribuir valor</button>
+        <button class="btn btn-ghost btn-sm" onclick="applyGrowth()">📈 Aplicar crescimento %</button>
+      </div>
+    </div>
+  `;
+
+  // Tabela com 12 meses
+  html += `<div class="card"><div class="scroll-x"><div class="month-grid month-grid-12">`;
+  html += `<div class="mg-head first">Descrição</div>`;
+  c.months.forEach(m => html += `<div class="mg-head">${m.label}</div>`);
+  html += `<div class="mg-head last">TOTAL 12M</div>`;
+
+  // Dias úteis
+  html += `<div class="mg-cell first">Dias úteis</div>`;
+  c.months.forEach((m,i) => html += `
+    <div class="mg-cell"><input type="number" min="0" max="31" value="${m.diasUteis}" 
+      oninput="setDiasUteis(${i}, this.value)"></div>`);
+  const sumDias = c.months.reduce((s,m)=>s+(m.diasUteis||0),0);
+  html += `<div class="mg-cell last">${sumDias}</div>`;
+
+  // Faturamento
+  html += `<div class="mg-cell first"><strong style="color:var(--erv-blue)">Faturamento bruto (R$)</strong></div>`;
+  c.months.forEach((m,i) => html += `
+    <div class="mg-cell"><input type="number" step="any" value="${m.faturamento}" 
+      oninput="setFaturamento(${i}, this.value)"></div>`);
+  const totFat = sum12(getMonthRevenue);
+  html += `<div class="mg-cell last">${fmtK(totFat)}</div>`;
+
+  // Fat por dia útil (calc)
+  html += `<div class="mg-cell first">Faturamento / dia útil</div>`;
+  c.months.forEach((m,i) => {
+    const d = m.diasUteis || 1;
+    html += `<div class="mg-cell">${fmtK(m.faturamento/d)}</div>`;
+  });
+  const avgDiario = sumDias>0 ? totFat/sumDias : 0;
+  html += `<div class="mg-cell last">${fmtK(avgDiario)}</div>`;
+
+  // Variação %
+  html += `<div class="mg-cell first">Variação mês a mês</div>`;
+  c.months.forEach((m,i) => {
+    if(i===0){ html += `<div class="mg-cell">—</div>`; return; }
+    const prev = c.months[i-1].faturamento;
+    const curr = m.faturamento;
+    const v = prev>0 ? (curr-prev)/prev*100 : 0;
+    const cor = v>0?'var(--green)':v<0?'var(--red)':'var(--text3)';
+    html += `<div class="mg-cell" style="color:${cor};font-weight:600">${v>0?'+':''}${v.toFixed(1)}%</div>`;
+  });
+  html += `<div class="mg-cell last">—</div>`;
+  html += `</div></div></div>`;
+
+  // Gráfico
+  html += `<div class="card"><div class="card-header"><div class="card-title">Evolução do faturamento projetado</div></div>
+    <div class="card-body"><div class="chart-wrap"><canvas id="chartFat"></canvas></div></div></div>`;
+
+  el.innerHTML = html;
+
+  // Chart
+  destroyChart('chartFat');
+  charts.chartFat = new Chart(document.getElementById('chartFat'),{
+    type:'bar',
+    data:{
+      labels: c.months.map(m=>m.label),
+      datasets:[{label:'Faturamento (R$)', data:c.months.map(m=>m.faturamento), backgroundColor:'#1E88E5', borderRadius:4, borderWidth:0}]
+    },
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>'R$ '+fmt2(c.raw)}}},scales:{y:{ticks:{callback:v=>'R$ '+fmtK(v),font:{family:'Barlow',size:10}},grid:{color:'rgba(0,0,0,.05)'}},x:{ticks:{font:{family:'Barlow',size:10}},grid:{display:false}}}}
+  });
+}
+
+function setDiasUteis(i, v){
+  const c = getActive(); if(!c) return;
+  c.months[i].diasUteis = parseInt(v)||0;
+  saveState();
+}
+function setFaturamento(i, v){
+  const c = getActive(); if(!c) return;
+  c.months[i].faturamento = parseFloat(v)||0;
+  recalc(); saveState();
+}
+
+function bulkFaturamento(){
+  openModal('Distribuir faturamento', `
+    <div class="modal-row">
+      <div class="modal-label">Valor a distribuir em todos os meses (R$)</div>
+      <input type="number" id="m-val" value="100000" step="any">
+    </div>
+  `, () => {
+    const v = parseFloat(document.getElementById('m-val').value)||0;
+    const c = getActive(); if(!c) return;
+    c.months.forEach(m => m.faturamento = v);
+    recalc(); renderAll();
+  });
+}
+
+function applyGrowth(){
+  openModal('Aplicar crescimento mensal', `
+    <div class="modal-row">
+      <div class="modal-label">Faturamento base do mês 1 (R$)</div>
+      <input type="number" id="m-base" value="100000" step="any">
+    </div>
+    <div class="modal-row">
+      <div class="modal-label">Crescimento mensal (%)</div>
+      <input type="number" id="m-pct" value="2" step="0.1">
+    </div>
+  `, () => {
+    const base = parseFloat(document.getElementById('m-base').value)||0;
+    const pct = parseFloat(document.getElementById('m-pct').value)||0;
+    const c = getActive(); if(!c) return;
+    c.months.forEach((m,i) => m.faturamento = Math.round(base * Math.pow(1+pct/100, i)));
+    recalc(); renderAll();
+  });
+}
+
+// ============================================================
+// RENDER: PREMISSAS
+// ============================================================
+function renderPremissas(){
+  const c = getActive(); if(!c) return;
+  const el = document.getElementById('pane-premissas');
+  let html = `
+    <div class="flex items-center justify-between mb-12">
+      <div>
+        <div class="section-title">Premissas — 12 meses</div>
+        <div class="section-sub">Cada item tem uma premissa padrão. Clique em qualquer célula mensal para criar um override específico. Badge indica o tipo: <span class="prem-badge prem-fixed">Fixo</span> <span class="prem-badge prem-pct-rev">% Fat.</span> <span class="prem-badge prem-pct">% Grupo</span></div>
+      </div>
+      <div class="flex gap-8">
+        <button class="btn btn-ghost btn-sm" onclick="openAddGroupPremissa()">+ Novo grupo</button>
+      </div>
+    </div>
+  `;
+
+  html += `<div class="card"><div class="scroll-x"><div class="month-grid month-grid-12">`;
+  html += `<div class="mg-head first">Conta / Premissa</div>`;
+  c.months.forEach(m => html += `<div class="mg-head">${m.label}</div>`);
+  html += `<div class="mg-head last">TOTAL 12M</div>`;
+
+  c.groups.forEach(g => {
+    const totAnn = sum12(i => getGroupMonthTotal(g.id, i));
+    // Group header row
+    html += `<div class="mg-cell first group-row" onclick="toggleGrp('${g.id}')">
+      <span class="mg-expand">${g.collapsed?'▶':'▼'}</span>
+      <strong>${g.label}</strong>
+      <span class="tag tag-blue" style="margin-left:6px">${g.items.length}</span>
+      ${g.editable?`<button class="btn btn-ghost btn-sm" style="margin-left:8px;padding:2px 6px;font-size:10px" onclick="event.stopPropagation();openAddItemPremissa('${g.id}')">+</button>
+      <button class="btn btn-danger btn-sm" style="padding:2px 6px;font-size:10px" onclick="event.stopPropagation();delGroupPremissa('${g.id}')">✕</button>`:''}
+    </div>`;
+    c.months.forEach((m,i) => html += `<div class="mg-cell group-row">${fmtK(getGroupMonthTotal(g.id, i))}</div>`);
+    html += `<div class="mg-cell last group-row">${fmtK(totAnn)}</div>`;
+
+    if(!g.collapsed){
+      g.items.forEach(it => {
+        // Default badge
+        const modeLabel = it.mode==='fixed'?'R$ '+fmtShort(it.value):(it.mode==='pct_rev'?it.value+'% fat':it.value+'% grp');
+        const modeCls = it.mode==='fixed'?'prem-fixed':it.mode==='pct_rev'?'prem-pct-rev':'prem-pct';
+        html += `<div class="mg-cell first" style="padding-left:28px">
+          <span>${it.label}</span>
+          <span class="${modeCls} prem-badge" onclick="editItemDefault('${g.id}','${it.id}')" title="Clique para editar premissa padrão">${modeLabel}</span>
+          <button class="btn btn-danger btn-sm" style="margin-left:4px;padding:1px 5px;font-size:9px" onclick="delItem('${g.id}','${it.id}')">✕</button>
+        </div>`;
+        // Monthly cells
+        for(let mi=0; mi<12; mi++){
+          const hasOverride = it.monthly && it.monthly[mi];
+          const val = it.computed[mi] || 0;
+          const p = getItemPremise(it, mi);
+          const modeClsM = p.mode==='fixed'?'fixed':p.mode==='pct_rev'?'pct_rev':'pct_group';
+          const modeT = p.mode==='fixed'?'R$':p.mode==='pct_rev'?'%F':'%G';
+          html += `<div class="mg-cell editable" onclick="editItemMonth('${g.id}','${it.id}',${mi})" title="${hasOverride?'Override: '+p.value+' ('+p.mode+')':'Padrão: '+p.value+' ('+p.mode+')'}">
+            <div class="mc-wrap">
+              ${hasOverride?`<span class="mc-mode ${modeClsM}">${modeT}</span>`:''}
+              <span>${fmtK(val)}</span>
+            </div>
+          </div>`;
+        }
+        const totItem = sum12(mi => it.computed[mi]||0);
+        html += `<div class="mg-cell last">${fmtK(totItem)}</div>`;
+      });
+    }
+  });
+
+  html += `</div></div></div>`;
+
+  // Summary
+  html += `<div class="card"><div class="card-header"><div class="card-title">Como usar as premissas</div></div>
+    <div class="card-body" style="font-size:12px;line-height:1.7;color:var(--text2)">
+      <strong style="color:var(--erv-blue)">3 tipos de premissa:</strong><br>
+      <span class="prem-badge prem-fixed">Valor fixo (R$)</span> — valor absoluto em reais (ex: aluguel R$ 5.000)<br>
+      <span class="prem-badge prem-pct-rev">% Faturamento</span> — percentual sobre o faturamento bruto do mês (ex: ICMS 6%)<br>
+      <span class="prem-badge prem-pct">% Grupo</span> — percentual sobre os itens fixos do mesmo grupo (ex: INSS 27% sobre salário)<br><br>
+      <strong style="color:var(--erv-blue)">Override mensal:</strong> clique em qualquer célula mensal para sobrescrever a premissa padrão só para aquele mês. Isso permite simular férias coletivas, 13º salário, meses sem promoção, etc.
+    </div>
+  </div>`;
+
+  el.innerHTML = html;
+}
+
+function toggleGrp(gid){
+  const c = getActive(); if(!c) return;
+  const g = c.groups.find(x => x.id===gid);
+  if(g){ g.collapsed = !g.collapsed; renderPremissas(); }
+}
+
+function editItemDefault(gid, iid){
+  const c = getActive(); if(!c) return;
+  const g = c.groups.find(x => x.id===gid);
+  const it = g.items.find(x => x.id===iid);
+  openModal('Editar premissa padrão — '+it.label, `
+    <div class="modal-row">
+      <div class="modal-label">Descrição</div>
+      <input type="text" id="m-label" value="${it.label}">
+    </div>
+    <div class="modal-row">
+      <div class="modal-label">Tipo de premissa (padrão — aplicada a todos os 12 meses)</div>
+      <select id="m-mode">
+        <option value="fixed" ${it.mode==='fixed'?'selected':''}>Valor fixo (R$)</option>
+        <option value="pct_rev" ${it.mode==='pct_rev'?'selected':''}>% do Faturamento bruto</option>
+        <option value="pct_group" ${it.mode==='pct_group'?'selected':''}>% do total do grupo (itens fixos)</option>
+      </select>
+    </div>
+    <div class="modal-row">
+      <div class="modal-label">Valor</div>
+      <input type="number" id="m-val" value="${it.value}" step="0.01">
+    </div>
+    <div style="font-size:11px;color:var(--text3);padding:8px;background:#f7fafd;border-radius:5px">
+      💡 A premissa padrão vale para todos os meses que não tenham um <strong>override específico</strong>. Para override por mês, clique na célula mensal.
+    </div>
+  `, () => {
+    it.label = document.getElementById('m-label').value;
+    it.mode = document.getElementById('m-mode').value;
+    it.value = parseFloat(document.getElementById('m-val').value)||0;
+    recalc(); renderPremissas();
+  });
+}
+
+function editItemMonth(gid, iid, mi){
+  const c = getActive(); if(!c) return;
+  const g = c.groups.find(x => x.id===gid);
+  const it = g.items.find(x => x.id===iid);
+  const o = (it.monthly && it.monthly[mi]) || {};
+  const hasOv = !!(it.monthly && it.monthly[mi]);
+  openModal(`Override mensal — ${it.label} (${c.months[mi].label})`, `
+    <div style="background:#f0f7ff;padding:10px;border-radius:5px;margin-bottom:14px;font-size:12px">
+      <strong>Premissa padrão:</strong> ${it.mode==='fixed'?'R$ '+fmt2(it.value):it.value+'% '+(it.mode==='pct_rev'?'do faturamento':'do grupo')}
+    </div>
+    <div class="modal-row">
+      <div class="modal-label">Tipo de premissa (apenas para ${c.months[mi].label})</div>
+      <select id="m-mode">
+        <option value="fixed" ${(o.mode||it.mode)==='fixed'?'selected':''}>Valor fixo (R$)</option>
+        <option value="pct_rev" ${(o.mode||it.mode)==='pct_rev'?'selected':''}>% do Faturamento bruto</option>
+        <option value="pct_group" ${(o.mode||it.mode)==='pct_group'?'selected':''}>% do total do grupo</option>
+      </select>
+    </div>
+    <div class="modal-row">
+      <div class="modal-label">Valor</div>
+      <input type="number" id="m-val" value="${o.value!==undefined?o.value:it.value}" step="0.01">
+    </div>
+    ${hasOv?'<div style="font-size:11px;color:var(--amber);padding:8px;background:#fff3e0;border-radius:5px">⚠️ Este mês já tem override. Salvar substituirá.</div>':''}
+  `, () => {
+    if(!it.monthly) it.monthly = Array(12).fill(null);
+    it.monthly[mi] = {
+      mode: document.getElementById('m-mode').value,
+      value: parseFloat(document.getElementById('m-val').value)||0
+    };
+    recalc(); renderPremissas();
+  });
+  // Add button to remove override
+  if(hasOv){
+    const ma = document.getElementById('modal-actions');
+    const rm = document.createElement('button');
+    rm.className = 'btn btn-danger';
+    rm.textContent = '✕ Remover override';
+    rm.onclick = () => {
+      it.monthly[mi] = null;
+      recalc(); renderPremissas(); closeModal();
+    };
+    ma.insertBefore(rm, ma.firstChild);
+  }
+}
+
+function delItem(gid, iid){
+  const c = getActive(); if(!c) return;
+  const g = c.groups.find(x => x.id===gid);
+  if(!confirm('Remover item?')) return;
+  g.items = g.items.filter(x => x.id !== iid);
+  recalc(); renderPremissas();
+}
+
+function delGroupPremissa(gid){
+  const c = getActive(); if(!c) return;
+  if(!confirm('Remover grupo e todos os itens?')) return;
+  c.groups = c.groups.filter(g => g.id !== gid);
+  recalc(); renderPremissas();
+}
+
+function openAddItemPremissa(gid){
+  openModal('Adicionar item ao grupo', `
+    <div class="modal-row">
+      <div class="modal-label">Descrição</div>
+      <input type="text" id="m-label" placeholder="Ex: Seguro predial">
+    </div>
+    <div class="modal-row">
+      <div class="modal-label">Tipo de premissa</div>
+      <select id="m-mode">
+        <option value="fixed">Valor fixo (R$)</option>
+        <option value="pct_rev">% do Faturamento bruto</option>
+        <option value="pct_group">% do total do grupo</option>
+      </select>
+    </div>
+    <div class="modal-row">
+      <div class="modal-label">Valor</div>
+      <input type="number" id="m-val" value="0" step="0.01">
+    </div>
+  `, () => {
+    const c = getActive(); if(!c) return;
+    const g = c.groups.find(x => x.id===gid);
+    g.items.push({
+      id:'i_'+Date.now(),
+      label: document.getElementById('m-label').value || 'Novo item',
+      mode: document.getElementById('m-mode').value,
+      value: parseFloat(document.getElementById('m-val').value)||0,
+      monthly: Array(12).fill(null),
+      computed: Array(12).fill(0)
+    });
+    recalc(); renderPremissas();
+  });
+}
+
+function openAddGroupPremissa(){
+  openModal('Novo grupo de premissas', `
+    <div class="modal-row">
+      <div class="modal-label">Nome do grupo</div>
+      <input type="text" id="m-label" placeholder="Ex: Despesas com TI">
+    </div>
+    <div class="modal-row">
+      <div class="modal-label">Tipo</div>
+      <select id="m-type">
+        <option value="cost">Custo / Despesa</option>
+        <option value="deduction">Dedução da receita (imposto)</option>
+      </select>
+    </div>
+  `, () => {
+    const c = getActive(); if(!c) return;
+    c.groups.push({
+      id:'g_'+Date.now(),
+      label: document.getElementById('m-label').value || 'Novo grupo',
+      type: document.getElementById('m-type').value,
+      editable:true,
+      items:[]
+    });
+    saveState(); renderPremissas();
+  });
+}
+
+// ============================================================
+// RENDER: DRE 12M
+// ============================================================
+// ============================================================
+// MARKUP — Cadastro e simulação de markup por produto
+// ============================================================
+
+function ensureMarkupState(){
+  const c = getActive(); if(!c) return;
+  if(!c.markup) c.markup = { products: [], activeId: null };
+  if(!c.markup.products) c.markup.products = [];
+}
+
+function calcMarkup(p){
+  // p: { custoCompra, freteCompra, outrosCustos, icmsCred, ipiCred,
+  //      icmsDeb, pisDeb, cofinsDeb, issDeb, outroImpDeb,
+  //      comissao, despFixa, lucroDesejado, precoManual }
+  //
+  // Fórmula do Markup Divisor:
+  // Markup = 1 / (1 - (DespVar% + Impostos% + LucroDesejado%) / 100)
+  // Preço de Venda = (CustoUnitário) × Markup
+  //
+  // Onde as % são sobre o PREÇO DE VENDA (forma padrão do markup divisor)
+
+  const custoLiquido = (p.custoCompra||0) + (p.freteCompra||0) + (p.outrosCustos||0)
+    - (p.icmsCred||0) - (p.ipiCred||0); // créditos tributários reduzem custo
+  
+  // Despesas variáveis que incidem sobre a venda (%)
+  const despVarPct = (p.icmsDeb||0) + (p.pisDeb||0) + (p.cofinsDeb||0) + (p.issDeb||0) + (p.outroImpDeb||0) + (p.comissao||0) + (p.despFixa||0);
+  const lucroPct = p.lucroDesejado||0;
+  const denom = 100 - despVarPct - lucroPct;
+
+  let markupDivisor = 0;
+  let markupMultiplicador = 0;
+  let precoSugerido = 0;
+  let viavel = true;
+  
+  if(denom <= 0){
+    viavel = false;
+  } else {
+    markupDivisor = 100 / denom;
+    precoSugerido = custoLiquido * markupDivisor;
+    markupMultiplicador = (precoSugerido / Math.max(custoLiquido,0.01)) - 1; // % sobre custo
+  }
+  
+  // Se tem preço manual, recalcula o lucro real
+  const precoUsado = (p.precoManual && p.precoManual > 0) ? p.precoManual : precoSugerido;
+  
+  const valImpostos = precoUsado * (despVarPct / 100);
+  const valComissaoDesp = precoUsado * ((p.comissao||0) + (p.despFixa||0)) / 100; // parte não-imposto
+  const valSoImpostos = precoUsado * ((p.icmsDeb||0) + (p.pisDeb||0) + (p.cofinsDeb||0) + (p.issDeb||0) + (p.outroImpDeb||0)) / 100;
+  const valDespVenda = precoUsado * ((p.comissao||0) + (p.despFixa||0)) / 100;
+  const lucroBruto = precoUsado - custoLiquido - valImpostos;
+  const lucroReal = precoUsado - custoLiquido - valImpostos;
+  const margemContribuicao = precoUsado > 0 ? (lucroReal / precoUsado * 100) : 0;
+  const markupReal = custoLiquido > 0 ? ((precoUsado - custoLiquido) / custoLiquido * 100) : 0;
+
+  return {
+    custoLiquido,
+    despVarPct,
+    lucroPct,
+    denom,
+    markupDivisor,
+    markupMultiplicador,
+    precoSugerido,
+    precoUsado,
+    usouManual: p.precoManual > 0,
+    valSoImpostos,
+    valDespVenda,
+    lucroReal,
+    margemContribuicao,
+    markupReal,
+    viavel
+  };
+}
+
+function defaultProduct(){
+  return {
+    id: 'p_' + Date.now(),
+    nome: 'Novo Produto',
+    codigo: '',
+    unidade: 'un',
+    custoCompra: 100,
+    freteCompra: 0,
+    outrosCustos: 0,
+    icmsCred: 0,
+    ipiCred: 0,
+    icmsDeb: 18,
+    pisDeb: 1.65,
+    cofinsDeb: 7.6,
+    issDeb: 0,
+    outroImpDeb: 0,
+    comissao: 3,
+    despFixa: 8,
+    lucroDesejado: 15,
+    precoManual: 0
+  };
+}
+
+function renderMarkup(){
+  ensureMarkupState();
+  const c = getActive(); if(!c) return;
+  const el = document.getElementById('pane-markup');
+  const prods = c.markup.products;
+  
+  // Se não tem produto ativo, pega o primeiro ou cria um padrão
+  if(!c.markup.activeId || !prods.find(p=>p.id===c.markup.activeId)){
+    c.markup.activeId = prods[0]?.id || null;
+  }
+  
+  let html = `
+    <div class="flex items-center justify-between mb-12">
+      <div>
+        <div class="section-title">Simulador de Markup de Produtos</div>
+        <div class="section-sub">Cadastre produtos com custos, impostos, despesas e margem desejada. O simulador calcula o preço de venda ideal e mostra visualmente a composição.</div>
+      </div>
+      <div class="flex gap-8">
+        <button class="btn btn-ghost btn-sm" onclick="addProduto()">+ Novo produto</button>
+        ${prods.length>0 ? `<button class="btn btn-ghost btn-sm" onclick="duplicarProduto()">📄 Duplicar</button>`:''}
+      </div>
+    </div>
+  `;
+  
+  if(prods.length === 0){
+    html += `
+      <div class="card">
+        <div class="card-body" style="text-align:center;padding:60px 20px">
+          <div style="font-size:48px;margin-bottom:10px">🏷️</div>
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:700;color:var(--erv-blue);margin-bottom:6px">Nenhum produto cadastrado</div>
+          <div style="font-size:13px;color:var(--text3);margin-bottom:20px">Cadastre o primeiro produto para começar a simular o markup.</div>
+          <button class="btn btn-primary" onclick="addProduto()">+ Cadastrar primeiro produto</button>
+        </div>
+      </div>
+    `;
+    el.innerHTML = html;
+    return;
+  }
+  
+  const p = prods.find(pr => pr.id === c.markup.activeId) || prods[0];
+  const r = calcMarkup(p);
+  
+  html += `<div class="mk-layout">`;
+  
+  // ========= FORMULÁRIO (ESQUERDA) =========
+  html += `
+    <div class="mk-form">
+      <div class="mk-form-title">📝 Cadastro do produto</div>
+      
+      <div class="mk-group">
+        <div class="mk-group-title">Identificação</div>
+        <div class="mk-field">
+          <div class="mk-field-label">Nome do produto</div>
+          <input type="text" value="${p.nome}" oninput="updProd('nome',this.value)" placeholder="Ex: Calha Galvanizada 4m">
+        </div>
+        <div class="mk-row">
+          <div class="mk-field">
+            <div class="mk-field-label">Código / SKU</div>
+            <input type="text" value="${p.codigo||''}" oninput="updProd('codigo',this.value)" placeholder="Ex: SKU-001">
+          </div>
+          <div class="mk-field">
+            <div class="mk-field-label">Unidade</div>
+            <input type="text" value="${p.unidade||'un'}" oninput="updProd('unidade',this.value)" placeholder="un, kg, m²">
+          </div>
+        </div>
+      </div>
+      
+      <div class="mk-group">
+        <div class="mk-group-title">💰 Custo de aquisição</div>
+        <div class="mk-field">
+          <div class="mk-field-label">Custo de compra unitário (R$) <span>sem impostos creditáveis</span></div>
+          <input type="number" step="0.01" value="${p.custoCompra}" oninput="updProd('custoCompra',parseFloat(this.value)||0)">
+        </div>
+        <div class="mk-row">
+          <div class="mk-field">
+            <div class="mk-field-label">Frete compra (R$)</div>
+            <input type="number" step="0.01" value="${p.freteCompra}" oninput="updProd('freteCompra',parseFloat(this.value)||0)">
+          </div>
+          <div class="mk-field">
+            <div class="mk-field-label">Outros custos (R$)</div>
+            <input type="number" step="0.01" value="${p.outrosCustos}" oninput="updProd('outrosCustos',parseFloat(this.value)||0)">
+          </div>
+        </div>
+        <div class="mk-row">
+          <div class="mk-field">
+            <div class="mk-field-label">ICMS crédito (R$)</div>
+            <input type="number" step="0.01" value="${p.icmsCred}" oninput="updProd('icmsCred',parseFloat(this.value)||0)">
+          </div>
+          <div class="mk-field">
+            <div class="mk-field-label">IPI crédito (R$)</div>
+            <input type="number" step="0.01" value="${p.ipiCred}" oninput="updProd('ipiCred',parseFloat(this.value)||0)">
+          </div>
+        </div>
+      </div>
+      
+      <div class="mk-group">
+        <div class="mk-group-title">🏛️ Impostos sobre a venda (%)</div>
+        <div class="mk-row">
+          <div class="mk-field">
+            <div class="mk-field-label">ICMS débito</div>
+            <input type="number" step="0.01" value="${p.icmsDeb}" oninput="updProd('icmsDeb',parseFloat(this.value)||0)">
+          </div>
+          <div class="mk-field">
+            <div class="mk-field-label">ISS</div>
+            <input type="number" step="0.01" value="${p.issDeb}" oninput="updProd('issDeb',parseFloat(this.value)||0)">
+          </div>
+        </div>
+        <div class="mk-row">
+          <div class="mk-field">
+            <div class="mk-field-label">PIS</div>
+            <input type="number" step="0.01" value="${p.pisDeb}" oninput="updProd('pisDeb',parseFloat(this.value)||0)">
+          </div>
+          <div class="mk-field">
+            <div class="mk-field-label">COFINS</div>
+            <input type="number" step="0.01" value="${p.cofinsDeb}" oninput="updProd('cofinsDeb',parseFloat(this.value)||0)">
+          </div>
+        </div>
+        <div class="mk-field">
+          <div class="mk-field-label">Outros impostos/taxas</div>
+          <input type="number" step="0.01" value="${p.outroImpDeb}" oninput="updProd('outroImpDeb',parseFloat(this.value)||0)">
+        </div>
+      </div>
+      
+      <div class="mk-group">
+        <div class="mk-group-title">📊 Despesas e lucro (%)</div>
+        <div class="mk-row">
+          <div class="mk-field">
+            <div class="mk-field-label">Comissão venda</div>
+            <input type="number" step="0.01" value="${p.comissao}" oninput="updProd('comissao',parseFloat(this.value)||0)">
+          </div>
+          <div class="mk-field">
+            <div class="mk-field-label">Despesa fixa rateada</div>
+            <input type="number" step="0.01" value="${p.despFixa}" oninput="updProd('despFixa',parseFloat(this.value)||0)">
+          </div>
+        </div>
+        <div class="mk-field">
+          <div class="mk-field-label">🎯 Lucro líquido desejado (%)</div>
+          <input type="number" step="0.01" value="${p.lucroDesejado}" oninput="updProd('lucroDesejado',parseFloat(this.value)||0)">
+        </div>
+      </div>
+      
+      <div class="mk-group">
+        <div class="mk-group-title">💵 Preço manual (opcional)</div>
+        <div class="mk-field">
+          <div class="mk-field-label">Preço de venda praticado <span>deixe 0 para usar sugerido</span></div>
+          <input type="number" step="0.01" value="${p.precoManual}" oninput="updProd('precoManual',parseFloat(this.value)||0)">
+        </div>
+      </div>
+    </div>
+  `;
+  
+  // ========= RESULTADO (DIREITA) =========
+  html += `<div>`;
+  html += `<div class="mk-result">
+    <div class="mk-result-header">
+      <div>
+        <div class="mk-product-name">${p.nome}</div>
+        <div class="mk-product-tag">${p.codigo?p.codigo+' · ':''}${p.unidade||'un'}</div>
+      </div>
+      <button class="btn btn-danger btn-sm" onclick="delProduto('${p.id}')">✕ Excluir</button>
+    </div>
+  `;
+  
+  // Alertas
+  if(!r.viavel){
+    html += `<div class="mk-warn">
+      <strong>⚠️ Produto inviável!</strong> A soma de impostos (${r.despVarPct.toFixed(1)}%) + lucro desejado (${r.lucroPct.toFixed(1)}%) ultrapassa 100% do preço de venda. 
+      Reduza os impostos, a comissão ou a margem de lucro.
+    </div>`;
+  } else if(r.usouManual && r.lucroReal < 0){
+    html += `<div class="mk-warn">
+      <strong>⚠️ Preço manual abaixo do custo!</strong> Você está vendendo com prejuízo de ${fmt(Math.abs(r.lucroReal))} por unidade.
+    </div>`;
+  } else if(r.usouManual && r.margemContribuicao < r.lucroPct){
+    html += `<div class="mk-warn">
+      <strong>⚠️ Margem abaixo do desejado.</strong> Sua margem real de ${r.margemContribuicao.toFixed(1)}% está abaixo do lucro desejado de ${r.lucroPct.toFixed(1)}%.
+    </div>`;
+  } else if(r.viavel){
+    html += `<div class="mk-ok">
+      <strong>✓ Produto viável.</strong> ${r.usouManual ? `Preço praticado gera margem de ${r.margemContribuicao.toFixed(1)}%.` : `Preço sugerido atinge o lucro desejado de ${r.lucroPct.toFixed(1)}%.`}
+    </div>`;
+  }
+  
+  // Card do preço sugerido
+  html += `<div class="mk-price-card">
+    <div class="mk-price-label">${r.usouManual ? 'Preço praticado' : 'Preço de venda sugerido'}</div>
+    <div class="mk-price-value">${fmt(r.precoUsado)}</div>
+    <div class="mk-price-sub">
+      ${r.usouManual ? `Sugerido: ${fmt(r.precoSugerido)} · ` : ''}
+      Markup: ${r.markupReal.toFixed(1)}% sobre custo
+    </div>
+  </div>`;
+  
+  // KPIs
+  html += `<div class="mk-kpis">
+    <div class="mk-kpi" style="--k:var(--erv-blue)">
+      <div class="mk-kpi-label">Markup divisor</div>
+      <div class="mk-kpi-val">${r.markupDivisor.toFixed(3)}</div>
+    </div>
+    <div class="mk-kpi" style="--k:var(--green)">
+      <div class="mk-kpi-label">Margem contribuição</div>
+      <div class="mk-kpi-val" style="color:${r.margemContribuicao>=r.lucroPct?'var(--green)':'var(--amber)'}">${r.margemContribuicao.toFixed(1)}%</div>
+    </div>
+    <div class="mk-kpi" style="--k:${r.lucroReal>=0?'var(--green)':'var(--red)'}">
+      <div class="mk-kpi-label">Lucro R$/un</div>
+      <div class="mk-kpi-val" style="color:${r.lucroReal>=0?'var(--green)':'var(--red)'}">${fmt(r.lucroReal)}</div>
+    </div>
+  </div>`;
+  
+  // Breakdown do preço
+  const pct = v => r.precoUsado > 0 ? (v/r.precoUsado*100).toFixed(1)+'%' : '0%';
+  html += `<div class="mk-breakdown">
+    <div class="mk-bd-item">
+      <div class="mk-bd-label">Custo líquido</div>
+      <div class="mk-bd-val" style="color:#ef5350">${fmt(r.custoLiquido)}</div>
+      <div class="mk-bd-pct">${pct(r.custoLiquido)} do preço</div>
+    </div>
+    <div class="mk-bd-item">
+      <div class="mk-bd-label">Impostos sobre venda</div>
+      <div class="mk-bd-val" style="color:#FFA726">${fmt(r.valSoImpostos)}</div>
+      <div class="mk-bd-pct">${pct(r.valSoImpostos)} do preço</div>
+    </div>
+    <div class="mk-bd-item">
+      <div class="mk-bd-label">Despesas (comissão + fixa)</div>
+      <div class="mk-bd-val" style="color:#1E88E5">${fmt(r.valDespVenda)}</div>
+      <div class="mk-bd-pct">${pct(r.valDespVenda)} do preço</div>
+    </div>
+    <div class="mk-bd-item">
+      <div class="mk-bd-label">Lucro líquido</div>
+      <div class="mk-bd-val" style="color:${r.lucroReal>=0?'#43A047':'#e53935'}">${fmt(r.lucroReal)}</div>
+      <div class="mk-bd-pct">${pct(r.lucroReal)} do preço</div>
+    </div>
+  </div>`;
+  
+  // Barra empilhada visual
+  const total = Math.max(r.precoUsado, 0.01);
+  const pCusto = Math.max(0,r.custoLiquido)/total*100;
+  const pImp = Math.max(0,r.valSoImpostos)/total*100;
+  const pDesp = Math.max(0,r.valDespVenda)/total*100;
+  const pLucro = Math.max(0,r.lucroReal)/total*100;
+  html += `<div class="mk-stack">
+    <div class="mk-stack-title">Composição visual do preço de venda</div>
+    <div class="mk-stack-bar">
+      <div class="mk-seg mk-seg-custo" style="width:${pCusto}%" title="Custo: ${fmt(r.custoLiquido)}">${pCusto>8?pCusto.toFixed(0)+'%':''}</div>
+      <div class="mk-seg mk-seg-imposto" style="width:${pImp}%" title="Impostos: ${fmt(r.valSoImpostos)}">${pImp>8?pImp.toFixed(0)+'%':''}</div>
+      <div class="mk-seg mk-seg-desp" style="width:${pDesp}%" title="Despesas: ${fmt(r.valDespVenda)}">${pDesp>8?pDesp.toFixed(0)+'%':''}</div>
+      <div class="mk-seg mk-seg-lucro" style="width:${pLucro}%" title="Lucro: ${fmt(r.lucroReal)}">${pLucro>8?pLucro.toFixed(0)+'%':''}</div>
+    </div>
+    <div class="mk-stack-labels">
+      <div class="mk-stack-leg" style="--leg-color:#ef5350">Custo ${fmt(r.custoLiquido)}</div>
+      <div class="mk-stack-leg" style="--leg-color:#FFA726">Impostos ${fmt(r.valSoImpostos)}</div>
+      <div class="mk-stack-leg" style="--leg-color:#1E88E5">Despesas ${fmt(r.valDespVenda)}</div>
+      <div class="mk-stack-leg" style="--leg-color:#43A047">Lucro ${fmt(r.lucroReal)}</div>
+    </div>
+  </div>`;
+  
+  // Gráfico de rosca
+  html += `<div class="chart-wrap" style="height:200px"><canvas id="chartMarkup"></canvas></div>`;
+  
+  html += `</div>`; // end mk-result
+  
+  // Lista de produtos cadastrados
+  html += `<div class="mk-result" style="margin-top:14px">
+    <div class="mk-list-title">
+      <span>📋 Produtos cadastrados (${prods.length})</span>
+      <button class="btn btn-ghost btn-sm" onclick="addProduto()">+ Adicionar</button>
+    </div>
+    <div class="mk-prod-row" style="background:#eef4fb;font-weight:700;cursor:default;font-size:10px;text-transform:uppercase;color:var(--erv-blue)">
+      <div>Produto</div>
+      <div style="text-align:right">Custo</div>
+      <div style="text-align:right">Preço</div>
+      <div style="text-align:right">Lucro</div>
+      <div style="text-align:center">Ações</div>
+    </div>
+  `;
+  prods.forEach(pr => {
+    const rr = calcMarkup(pr);
+    html += `<div class="mk-prod-row ${pr.id===c.markup.activeId?'active':''}" onclick="selProduto('${pr.id}')">
+      <div>
+        <div class="mk-prod-name">${pr.nome}</div>
+        <div style="font-size:10px;color:var(--text3)">${pr.codigo||'sem código'} · ${pr.unidade||'un'}</div>
+      </div>
+      <div class="mk-prod-val">${fmtK(rr.custoLiquido)}</div>
+      <div class="mk-prod-val" style="color:var(--erv-blue);font-weight:700">${fmtK(rr.precoUsado)}</div>
+      <div class="mk-prod-val" style="color:${rr.lucroReal>=0?'var(--green)':'var(--red)'};font-weight:700">${rr.margemContribuicao.toFixed(1)}%</div>
+      <div class="mk-prod-del" onclick="event.stopPropagation();delProduto('${pr.id}')">✕</div>
+    </div>`;
+  });
+  html += `</div>`;
+  
+  html += `</div>`; // end right col
+  html += `</div>`; // end mk-layout
+  
+  el.innerHTML = html;
+  
+  // Gráfico de rosca
+  destroyChart('chartMarkup');
+  charts.chartMarkup = new Chart(document.getElementById('chartMarkup'),{
+    type:'doughnut',
+    data:{
+      labels:['Custo', 'Impostos', 'Despesas', r.lucroReal>=0?'Lucro':'Prejuízo'],
+      datasets:[{
+        data:[r.custoLiquido, r.valSoImpostos, r.valDespVenda, Math.abs(r.lucroReal)],
+        backgroundColor:['#ef5350','#FFA726','#1E88E5', r.lucroReal>=0?'#43A047':'#c62828'],
+        borderWidth:2,
+        borderColor:'#fff'
+      }]
+    },
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{font:{family:'Barlow',size:11},padding:8}},tooltip:{callbacks:{label:c=>` ${c.label}: ${fmt(c.raw)} (${(c.raw/total*100).toFixed(1)}%)`}}}}
+  });
+}
+
+function updProd(field, value){
+  const c = getActive(); if(!c) return;
+  ensureMarkupState();
+  const p = c.markup.products.find(pr => pr.id === c.markup.activeId);
+  if(p){
+    p[field] = value;
+    c.updatedAt = new Date().toISOString();
+    saveState();
+    // Re-render apenas a parte de resultado sem perder foco dos inputs
+    renderMarkup();
+    // Restaurar foco no elemento ativo
+    setTimeout(()=>{
+      const active = document.activeElement;
+      if(active && active.tagName === 'INPUT'){
+        const val = active.value;
+        active.focus();
+        active.setSelectionRange(val.length, val.length);
+      }
+    }, 0);
+  }
+}
+
+function addProduto(){
+  const c = getActive(); if(!c) return;
+  ensureMarkupState();
+  const np = defaultProduct();
+  c.markup.products.push(np);
+  c.markup.activeId = np.id;
+  saveState();
+  renderMarkup();
+}
+
+function duplicarProduto(){
+  const c = getActive(); if(!c) return;
+  ensureMarkupState();
+  const src = c.markup.products.find(pr => pr.id === c.markup.activeId);
+  if(!src) return;
+  const copy = JSON.parse(JSON.stringify(src));
+  copy.id = 'p_' + Date.now();
+  copy.nome = src.nome + ' (cópia)';
+  c.markup.products.push(copy);
+  c.markup.activeId = copy.id;
+  saveState();
+  renderMarkup();
+  toast('Produto duplicado!');
+}
+
+function delProduto(pid){
+  const c = getActive(); if(!c) return;
+  ensureMarkupState();
+  const p = c.markup.products.find(pr => pr.id === pid);
+  if(!p) return;
+  if(!confirm('Excluir "'+p.nome+'"?')) return;
+  c.markup.products = c.markup.products.filter(pr => pr.id !== pid);
+  if(c.markup.activeId === pid) c.markup.activeId = c.markup.products[0]?.id || null;
+  saveState();
+  renderMarkup();
+}
+
+function selProduto(pid){
+  const c = getActive(); if(!c) return;
+  ensureMarkupState();
+  c.markup.activeId = pid;
+  saveState();
+  renderMarkup();
+}
+
+function renderDRE(){
+  const c = getActive(); if(!c) return;
+  const el = document.getElementById('pane-dre');
+  // Inicializar estado de expansão se não existir
+  if(!c._dreExpanded) c._dreExpanded = {};
+  
+  const fatTotal = sum12(getMonthRevenue);
+  const fatMonths = c.months.map((m,i) => getMonthRevenue(i));
+  
+  // Helper: calcula % sobre faturamento de um mês específico (ou anual)
+  const pctMonth = (val, mi) => {
+    const f = fatMonths[mi];
+    return f > 0 ? (val/f*100).toFixed(1) : '0.0';
+  };
+  const pctAnnual = (val) => fatTotal > 0 ? (val/fatTotal*100).toFixed(1) : '0.0';
+  
+  let html = `
+    <div class="flex items-center justify-between mb-12">
+      <div>
+        <div class="section-title">DRE Consolidado — 12 meses</div>
+        <div class="section-sub">Clique nos grupos de custo para expandir/retrair os itens. Ao lado de cada valor mostra o percentual sobre o faturamento (AV — Análise Vertical).</div>
+      </div>
+      <div class="flex gap-8">
+        <button class="btn btn-ghost btn-sm" onclick="toggleAllDRE(true)">+ Expandir tudo</button>
+        <button class="btn btn-ghost btn-sm" onclick="toggleAllDRE(false)">− Retrair tudo</button>
+      </div>
+    </div>
+  `;
+
+  html += `<div class="card"><div class="scroll-x"><div class="month-grid month-grid-12">`;
+  html += `<div class="mg-head first">Conta</div>`;
+  c.months.forEach(m => html += `<div class="mg-head">${m.label}</div>`);
+  html += `<div class="mg-head last">TOTAL</div>`;
+
+  // RECEITA BRUTA
+  html += `<div class="mg-cell first revenue-row"><strong>(+) Receita Bruta</strong></div>`;
+  c.months.forEach((m,i) => {
+    const v = getMonthRevenue(i);
+    html += `<div class="mg-cell revenue-row" style="color:var(--green);font-weight:700">${fmtK(v)} <span class="dre-av">100.0%</span></div>`;
+  });
+  html += `<div class="mg-cell last revenue-row" style="color:var(--green);font-weight:700">${fmtK(fatTotal)} <span class="dre-av">100.0%</span></div>`;
+
+  // DEDUÇÕES (expansível)
+  c.groups.filter(g => g.type==='deduction').forEach(g => {
+    const exp = c._dreExpanded[g.id];
+    html += renderDREGroupRow(g, true, exp, pctMonth, pctAnnual);
+    if(exp) html += renderDREGroupItems(g, true, pctMonth, pctAnnual);
+  });
+
+  // RECEITA LÍQUIDA
+  const recLiqAn = sum12(getMonthRecLiq);
+  html += `<div class="mg-cell first total-row">= Receita Líquida</div>`;
+  c.months.forEach((m,i) => {
+    const v = getMonthRecLiq(i);
+    html += `<div class="mg-cell total-row">${fmtK(v)} <span class="dre-av-w">${pctMonth(v,i)}%</span></div>`;
+  });
+  html += `<div class="mg-cell last total-row">${fmtK(recLiqAn)} <span class="dre-av-w">${pctAnnual(recLiqAn)}%</span></div>`;
+
+  // CMV (expansível)
+  const gcmv = c.groups.find(g => g.id==='g_cmv');
+  if(gcmv){
+    const exp = c._dreExpanded[gcmv.id];
+    html += renderDREGroupRow(gcmv, false, exp, pctMonth, pctAnnual);
+    if(exp) html += renderDREGroupItems(gcmv, false, pctMonth, pctAnnual);
+  }
+
+  // MARGEM CONTRIBUIÇÃO
+  const mcAn = getAnnualMC();
+  html += `<div class="mg-cell first positive-row">= Margem de Contribuição</div>`;
+  c.months.forEach((m,i) => {
+    const v = getMonthMC(i);
+    html += `<div class="mg-cell positive-row">${fmtK(v)} <span class="dre-av">${pctMonth(v,i)}%</span></div>`;
+  });
+  html += `<div class="mg-cell last positive-row">${fmtK(mcAn)} <span class="dre-av">${pctAnnual(mcAn)}%</span></div>`;
+
+  // CUSTOS FIXOS por grupo (expansíveis)
+  c.groups.filter(g => g.type==='cost' && g.id!=='g_cmv').forEach(g => {
+    const exp = c._dreExpanded[g.id];
+    html += renderDREGroupRow(g, false, exp, pctMonth, pctAnnual);
+    if(exp) html += renderDREGroupItems(g, false, pctMonth, pctAnnual);
+  });
+
+  // TOTAL CUSTOS FIXOS
+  const cfAn = getAnnualCF();
+  html += `<div class="mg-cell first" style="color:var(--red);font-weight:700;background:#fef5f5">= Total Custos Fixos</div>`;
+  c.months.forEach((m,i) => {
+    const v = getMonthCF(i);
+    html += `<div class="mg-cell" style="color:var(--red);font-weight:700;background:#fef5f5">(${fmtK(v)}) <span class="dre-av">${pctMonth(v,i)}%</span></div>`;
+  });
+  html += `<div class="mg-cell last" style="color:var(--red);font-weight:700;background:#fef5f5">(${fmtK(cfAn)}) <span class="dre-av">${pctAnnual(cfAn)}%</span></div>`;
+
+  // LUCRO LÍQUIDO
+  const llAnnual = getAnnualLL();
+  html += `<div class="mg-cell first ${llAnnual>=0?'positive-row':'negative-row'}"><strong style="font-size:14px">= LUCRO / PREJUÍZO</strong></div>`;
+  c.months.forEach((m,i) => {
+    const ll = getMonthLL(i);
+    html += `<div class="mg-cell ${ll>=0?'positive-row':'negative-row'}"><strong>${fmtK(ll)}</strong> <span class="dre-av">${pctMonth(ll,i)}%</span></div>`;
+  });
+  html += `<div class="mg-cell last ${llAnnual>=0?'positive-row':'negative-row'}"><strong>${fmtK(llAnnual)}</strong> <span class="dre-av">${pctAnnual(llAnnual)}%</span></div>`;
+
+  html += `</div></div></div>`;
+
+  // KPIs anuais
+  html += `<div class="kpi-grid">`;
+  html += `<div class="kpi"><div class="kpi-label">Faturamento anual</div><div class="kpi-value">${fmtK2(getAnnualRevenue())}</div></div>`;
+  const mcp = getAnnualMCPct();
+  html += `<div class="kpi ${mcp>=30?'green':mcp>=15?'amber':'red'}"><div class="kpi-label">MC média anual</div><div class="kpi-value">${mcp.toFixed(1)}%</div><div class="kpi-sub">${fmtK2(getAnnualMC())}</div></div>`;
+  html += `<div class="kpi red"><div class="kpi-label">Custos fixos anuais</div><div class="kpi-value">${fmtK2(getAnnualCF())}</div></div>`;
+  html += `<div class="kpi ${llAnnual>=0?'green':'red'}"><div class="kpi-label">Resultado anual</div><div class="kpi-value">${fmtK2(llAnnual)}</div></div>`;
+  html += `</div>`;
+
+  // Gráfico de barras empilhadas
+  html += `<div class="card"><div class="card-header"><div class="card-title">Evolução mensal — Receita, Custos e Resultado</div></div>
+    <div class="card-body"><div class="chart-wrap"><canvas id="chartDRE"></canvas></div></div></div>`;
+
+  el.innerHTML = html;
+
+  destroyChart('chartDRE');
+  charts.chartDRE = new Chart(document.getElementById('chartDRE'),{
+    type:'bar',
+    data:{
+      labels: c.months.map(m=>m.label),
+      datasets:[
+        {label:'Receita Líquida', type:'line', data:c.months.map((m,i)=>getMonthRecLiq(i)), borderColor:'#2e7d32', backgroundColor:'#2e7d32', tension:.3, pointRadius:3, borderWidth:2},
+        {label:'CMV', data:c.months.map((m,i)=>getMonthCMV(i)), backgroundColor:'#FFA726', borderRadius:3, borderWidth:0},
+        {label:'Custos Fixos', data:c.months.map((m,i)=>getMonthCF(i)), backgroundColor:'#1E88E5', borderRadius:3, borderWidth:0},
+        {label:'Lucro Líquido', data:c.months.map((m,i)=>getMonthLL(i)), backgroundColor:c.months.map((m,i)=>getMonthLL(i)>=0?'#43A047':'#e53935'), borderRadius:3, borderWidth:0}
+      ]
+    },
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{font:{family:'Barlow',size:11}}}},scales:{y:{ticks:{callback:v=>'R$ '+fmtK(v),font:{family:'Barlow',size:10}},grid:{color:'rgba(0,0,0,.05)'}},x:{ticks:{font:{family:'Barlow',size:10}},grid:{display:false}}}}
+  });
+}
+
+// Helper: linha de grupo expansível
+function renderDREGroupRow(g, isDeduction, expanded, pctMonth, pctAnnual){
+  const c = getActive();
+  const prefix = isDeduction ? '(−)' : '(−)';
+  const color = 'var(--red)';
+  const icon = expanded ? '▼' : '▶';
+  let html = `<div class="mg-cell first dre-expandable" style="color:${color};cursor:pointer" onclick="toggleDREGroup('${g.id}')">
+    <span class="dre-toggle-icon">${icon}</span> ${prefix} ${g.label}
+  </div>`;
+  c.months.forEach((m,i) => {
+    const v = getGroupMonthTotal(g.id, i);
+    html += `<div class="mg-cell" style="color:${color}" onclick="toggleDREGroup('${g.id}')">(${fmtK(v)}) <span class="dre-av">${pctMonth(v,i)}%</span></div>`;
+  });
+  const vAn = sum12(i => getGroupMonthTotal(g.id, i));
+  html += `<div class="mg-cell last" style="color:${color}" onclick="toggleDREGroup('${g.id}')">(${fmtK(vAn)}) <span class="dre-av">${pctAnnual(vAn)}%</span></div>`;
+  return html;
+}
+
+// Helper: itens expandidos de um grupo
+function renderDREGroupItems(g, isDeduction, pctMonth, pctAnnual){
+  const c = getActive();
+  let html = '';
+  g.items.forEach(it => {
+    html += `<div class="mg-cell first dre-item-row" style="padding-left:36px;font-size:11px;color:var(--text2);background:#fafcfd">
+      <span style="color:var(--erv-blue);margin-right:4px">└</span>${it.label}
+    </div>`;
+    c.months.forEach((m,i) => {
+      const v = it.computed[i] || 0;
+      html += `<div class="mg-cell dre-item-row" style="font-size:11px;color:var(--text2);background:#fafcfd">${fmtK(v)} <span class="dre-av dre-av-sub">${pctMonth(v,i)}%</span></div>`;
+    });
+    const vAn = sum12(i => it.computed[i]||0);
+    html += `<div class="mg-cell last dre-item-row" style="font-size:11px;color:var(--text2);background:#e8f0f8">${fmtK(vAn)} <span class="dre-av dre-av-sub">${pctAnnual(vAn)}%</span></div>`;
+  });
+  return html;
+}
+
+function toggleDREGroup(gid){
+  const c = getActive(); if(!c) return;
+  if(!c._dreExpanded) c._dreExpanded = {};
+  c._dreExpanded[gid] = !c._dreExpanded[gid];
+  renderDRE();
+}
+
+function toggleAllDRE(expand){
+  const c = getActive(); if(!c) return;
+  if(!c._dreExpanded) c._dreExpanded = {};
+  c.groups.forEach(g => {
+    if(g.type==='cost' || g.type==='deduction') c._dreExpanded[g.id] = expand;
+  });
+  renderDRE();
+}
+
+// ============================================================
+// RENDER: PE 12M
+// ============================================================
+function renderPE(){
+  const c = getActive(); if(!c) return;
+  const el = document.getElementById('pane-pe');
+  let html = `<div class="section-title">Ponto de Equilíbrio — 12 meses</div>
+    <div class="section-sub">Faturamento mínimo para cobrir os custos fixos em cada mês e na visão anual consolidada.</div>`;
+
+  // KPIs anuais
+  const totFat = getAnnualRevenue();
+  const mcp = getAnnualMCPct();
+  const cf = getAnnualCF();
+  const ll = getAnnualLL();
+  const pe = getAnnualPEcont();
+  const gap = totFat - pe;
+  const seg = totFat>0?gap/totFat*100:0;
+
+  html += `<div class="kpi-grid">`;
+  html += `<div class="kpi"><div class="kpi-label">Faturamento 12M</div><div class="kpi-value">${fmtK2(totFat)}</div></div>`;
+  html += `<div class="kpi ${mcp>=30?'green':mcp>=15?'amber':'red'}"><div class="kpi-label">MC média 12M</div><div class="kpi-value">${mcp.toFixed(1)}%</div></div>`;
+  html += `<div class="kpi"><div class="kpi-label">PE contábil 12M</div><div class="kpi-value">${fmtK2(pe)}</div></div>`;
+  html += `<div class="kpi ${seg>=20?'green':seg>=5?'amber':'red'}"><div class="kpi-label">Margem de segurança</div><div class="kpi-value">${seg.toFixed(1)}%</div><div class="kpi-sub">${seg>=20?'Saudável':seg>=5?'Atenção':'Crítica'}</div></div>`;
+  html += `</div>`;
+
+  // Termômetro anual
+  const barPct = pe>0?Math.min(totFat/pe*100,130):0;
+  const barCls = barPct<80?'pe-bar-red':barPct<100?'pe-bar-amber':'pe-bar-blue';
+  html += `<div class="pe-meter">
+    <div class="pe-title">📏 Termômetro anual — Faturamento vs. PE Contábil</div>
+    <div class="pe-bar-wrap"><div class="pe-bar-fill ${barCls}" style="width:${Math.min(barPct,100)}%"></div></div>
+    <div class="pe-labels"><span>R$ 0</span><span>PE: ${fmtK2(pe)}</span><span>Fat.: ${fmtK2(totFat)}</span></div>
+    <div class="pe-grid">
+      <div class="pe-item"><div class="pe-item-label">Gap vs PE (anual)</div><div class="pe-item-val" style="color:${gap>=0?'var(--green)':'var(--red)'}">${fmtK2(gap)}</div><div class="pe-item-sub">${gap>=0?'Acima do equilíbrio':'Abaixo do equilíbrio'}</div></div>
+      <div class="pe-item"><div class="pe-item-label">MC necessária</div><div class="pe-item-val">${totFat>0?(cf/totFat*100).toFixed(1)+'%':'—'}</div><div class="pe-item-sub">Para cobrir fixos anuais</div></div>
+      <div class="pe-item"><div class="pe-item-label">Fat. mensal médio p/ PE</div><div class="pe-item-val">${fmtK2(pe/12)}</div><div class="pe-item-sub">Distribuição linear</div></div>
+    </div>
+  </div>`;
+
+  // Tabela PE mensal
+  html += `<div class="card"><div class="card-header"><div class="card-title">PE mês a mês</div></div><div class="scroll-x"><div class="month-grid month-grid-12">`;
+  html += `<div class="mg-head first">Indicador</div>`;
+  c.months.forEach(m => html += `<div class="mg-head">${m.label}</div>`);
+  html += `<div class="mg-head last">MÉDIA</div>`;
+
+  html += `<div class="mg-cell first">Faturamento</div>`;
+  c.months.forEach((m,i) => html += `<div class="mg-cell">${fmtK(getMonthRevenue(i))}</div>`);
+  html += `<div class="mg-cell last">${fmtK(totFat/12)}</div>`;
+
+  html += `<div class="mg-cell first">MC %</div>`;
+  c.months.forEach((m,i) => {
+    const p = getMonthMCPct(i);
+    html += `<div class="mg-cell" style="color:${p>=30?'var(--green)':p>=15?'var(--amber)':'var(--red)'};font-weight:600">${p.toFixed(1)}%</div>`;
+  });
+  html += `<div class="mg-cell last">${mcp.toFixed(1)}%</div>`;
+
+  html += `<div class="mg-cell first">Custos fixos</div>`;
+  c.months.forEach((m,i) => html += `<div class="mg-cell" style="color:var(--red)">${fmtK(getMonthCF(i))}</div>`);
+  html += `<div class="mg-cell last">${fmtK(cf/12)}</div>`;
+
+  html += `<div class="mg-cell first" style="font-weight:700;color:var(--erv-blue);background:#eef4fb">PE Contábil</div>`;
+  c.months.forEach((m,i) => html += `<div class="mg-cell" style="font-weight:700;color:var(--erv-blue);background:#eef4fb">${fmtK(getMonthPEcont(i))}</div>`);
+  html += `<div class="mg-cell last" style="font-weight:700;color:var(--erv-blue);background:#eef4fb">${fmtK(pe/12)}</div>`;
+
+  html += `<div class="mg-cell first">Gap</div>`;
+  c.months.forEach((m,i) => {
+    const g = getMonthRevenue(i) - getMonthPEcont(i);
+    html += `<div class="mg-cell" style="color:${g>=0?'var(--green)':'var(--red)'};font-weight:600">${fmtK(g)}</div>`;
+  });
+  html += `<div class="mg-cell last" style="color:${gap>=0?'var(--green)':'var(--red)'};font-weight:700">${fmtK(gap/12)}</div>`;
+
+  html += `<div class="mg-cell first">Margem segurança</div>`;
+  c.months.forEach((m,i) => {
+    const fat = getMonthRevenue(i);
+    const g = fat - getMonthPEcont(i);
+    const s = fat>0?g/fat*100:0;
+    html += `<div class="mg-cell" style="color:${s>=20?'var(--green)':s>=5?'var(--amber)':'var(--red)'};font-weight:600">${s.toFixed(1)}%</div>`;
+  });
+  html += `<div class="mg-cell last" style="font-weight:700">${seg.toFixed(1)}%</div>`;
+
+  html += `</div></div></div>`;
+
+  // Gráfico PE vs Faturamento
+  html += `<div class="card"><div class="card-header"><div class="card-title">Faturamento vs. Ponto de Equilíbrio — mensal</div></div>
+    <div class="card-body"><div class="chart-wrap"><canvas id="chartPE"></canvas></div></div></div>`;
+
+  el.innerHTML = html;
+
+  destroyChart('chartPE');
+  charts.chartPE = new Chart(document.getElementById('chartPE'),{
+    type:'line',
+    data:{
+      labels: c.months.map(m=>m.label),
+      datasets:[
+        {label:'Faturamento', data:c.months.map((m,i)=>getMonthRevenue(i)), borderColor:'#1565C0', backgroundColor:'rgba(21,101,192,.1)', tension:.3, fill:true, pointBackgroundColor:'#1565C0',pointRadius:4},
+        {label:'PE Contábil', data:c.months.map((m,i)=>getMonthPEcont(i)), borderColor:'#c62828', borderDash:[6,4], borderWidth:2, pointRadius:3, pointBackgroundColor:'#c62828'},
+        {label:'Custos Fixos', data:c.months.map((m,i)=>getMonthCF(i)), borderColor:'#e65100', backgroundColor:'rgba(230,81,0,.05)', tension:.3, pointRadius:3}
+      ]
+    },
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{font:{family:'Barlow',size:11}}}},scales:{y:{ticks:{callback:v=>'R$ '+fmtK(v),font:{family:'Barlow',size:10}},grid:{color:'rgba(0,0,0,.05)'}},x:{ticks:{font:{family:'Barlow',size:10}},grid:{display:false}}}}
+  });
+}
+
+// ============================================================
+// RENDER: TRIBUTOS
+// ============================================================
+function renderTributos(){
+  const c = getActive(); if(!c) return;
+  const el = document.getElementById('pane-tributos');
+  const fatAnual = getAnnualRevenue();
+  const ativ = c.atividade;
+  const regime = c.regime;
+
+  function calcSimples(fat){
+    const faixas=[{lim:180000,aliq:4,ded:0},{lim:360000,aliq:7.3,ded:5940},{lim:720000,aliq:9.5,ded:13860},{lim:1800000,aliq:10.7,ded:22500},{lim:3600000,aliq:14.3,ded:87300},{lim:4800000,aliq:19,ded:378000}];
+    for(const f of faixas){
+      if(fat<=f.lim){
+        const ef = fat>0?Math.max((fat*f.aliq/100-f.ded)/fat*100,0):0;
+        return {aliq:ef.toFixed(2),total:fat*ef/100};
+      }
+    }
+    return {aliq:'33.00',total:fat*0.33};
+  }
+  function calcPresumido(fat){
+    const pres = (ativ==='servicos'||ativ==='misto') ? 0.32 : 0.08;
+    const base = fat*pres;
+    const irpj = base*0.15+(base>240000?base*0.10:0);
+    const csll = base*0.09;
+    const pis = fat*0.0065;
+    const cofins = fat*0.03;
+    const total = irpj+csll+pis+cofins;
+    return {aliq:fat>0?(total/fat*100).toFixed(2):'0',total,detail:{irpj,csll,pis,cofins}};
+  }
+  function calcReal(fat){
+    const lucro = Math.max(getAnnualLL(), 0);
+    const irpj = lucro*0.15+(lucro>240000?lucro*0.10:0);
+    const csll = lucro*0.09;
+    const pis = fat*0.0165;
+    const cofins = fat*0.076;
+    const total = irpj+csll+pis+cofins;
+    return {aliq:fat>0?(total/fat*100).toFixed(2):'0',total,detail:{irpj,csll,pis,cofins}};
+  }
+
+  const s = calcSimples(fatAnual);
+  const p = calcPresumido(fatAnual);
+  const r = calcReal(fatAnual);
+  const min = Math.min(s.total,p.total,r.total);
+  const max = Math.max(s.total,p.total,r.total);
+  function badge(t){
+    if(t===min) return '<span class="regime-badge badge-best">✓ Menor carga</span>';
+    if(t===max) return '<span class="regime-badge badge-worst">↑ Maior carga</span>';
+    return '<span class="regime-badge badge-mid">— Intermediário</span>';
+  }
+
+  let html = `<div class="section-title">Comparativo Regime Tributário</div>
+    <div class="section-sub">Cálculo sobre faturamento anual de <strong>${fmt(fatAnual)}</strong> (atividade: ${ativ}). Clique no cartão para ativar o regime.</div>`;
+
+  html += `<div class="regime-grid">`;
+  [{k:'simples',name:'Simples Nacional',d:s,desc:'Alíquota efetiva sobre faturamento · Tabela Anexo I/III · PIS/COFINS/IRPJ/CSLL unificados'},
+   {k:'presumido',name:'Lucro Presumido',d:p,desc:`IRPJ+CSLL base: ${fmt(p.detail.irpj+p.detail.csll)} · PIS (0,65%) · COFINS (3%)`},
+   {k:'real',name:'Lucro Real',d:r,desc:`IRPJ+CSLL sobre lucro · PIS (1,65%) · COFINS (7,6%) não cumulativo`}
+  ].forEach(x => {
+    html += `<div class="regime-card ${regime===x.k?'active':''}" onclick="setRegime('${x.k}')">
+      <div class="regime-name">${x.name}</div>
+      <div class="regime-imposto">${x.d.aliq}%<span style="font-size:13px;color:var(--text3);font-weight:400"> efetivo</span></div>
+      <div class="regime-detail">Total anual: <strong>${fmt(x.d.total)}</strong><br>${x.desc}</div>
+      ${badge(x.d.total)}
+    </div>`;
+  });
+  html += `</div>`;
+
+  html += `<div class="card"><div class="card-header"><div class="card-title">Comparativo visual — Carga tributária anual</div></div>
+    <div class="card-body"><div class="chart-wrap"><canvas id="chartTrib"></canvas></div></div></div>`;
+
+  el.innerHTML = html;
+
+  destroyChart('chartTrib');
+  charts.chartTrib = new Chart(document.getElementById('chartTrib'),{
+    type:'bar',
+    data:{
+      labels:['Simples Nacional','Lucro Presumido','Lucro Real'],
+      datasets:[{label:'Carga anual (R$)',data:[s.total,p.total,r.total],backgroundColor:['#1565C0','#1E88E5','#64B5F6'],borderRadius:6,borderWidth:0}]
+    },
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>'R$ '+fmt2(c.raw)}}},scales:{y:{ticks:{callback:v=>'R$ '+fmtK(v),font:{family:'Barlow',size:10}},grid:{color:'rgba(0,0,0,.05)'}},x:{ticks:{font:{family:'Barlow',size:11}},grid:{display:false}}}}
+  });
+}
+
+function setRegime(r){
+  const c = getActive(); if(!c) return;
+  c.regime = r;
+  saveState(); renderTributos(); renderConfig();
+}
+
+// ============================================================
+// RENDER: DASHBOARD
+// ============================================================
+function renderDashboard(){
+  const c = getActive(); if(!c) return;
+  const el = document.getElementById('pane-dashboard');
+  const fat = getAnnualRevenue();
+  const mcp = getAnnualMCPct();
+  const cf = getAnnualCF();
+  const ll = getAnnualLL();
+  const pe = getAnnualPEcont();
+  const gap = fat - pe;
+  const seg = fat>0?gap/fat*100:0;
+
+  let html = `<div class="flex items-center justify-between mb-16">
+    <div>
+      <div class="section-title">Dashboard — ${c.name}</div>
+      <div class="section-sub">Visão consolidada dos 12 meses com diagnóstico automático.</div>
+    </div>
+    <button class="btn btn-ghost btn-sm" onclick="window.print()">🖨️ Imprimir / PDF</button>
+  </div>`;
+
+  html += `<div class="kpi-grid">
+    <div class="kpi"><div class="kpi-label">Faturamento 12M</div><div class="kpi-value">${fmtK2(fat)}</div><div class="kpi-sub">${fmtK2(fat/12)} / mês médio</div></div>
+    <div class="kpi ${mcp>=30?'green':mcp>=15?'amber':'red'}"><div class="kpi-label">Margem de contribuição</div><div class="kpi-value">${mcp.toFixed(1)}%</div><div class="kpi-sub">${mcp>=30?'Saudável':mcp>=15?'Atenção':'Crítica'}</div></div>
+    <div class="kpi ${ll>=0?'green':'red'}"><div class="kpi-label">Resultado anual</div><div class="kpi-value">${fmtK2(ll)}</div><div class="kpi-sub">${fat>0?(ll/fat*100).toFixed(1)+'% margem':'-'}</div></div>
+    <div class="kpi ${seg>=20?'green':seg>=5?'amber':'red'}"><div class="kpi-label">Margem de segurança</div><div class="kpi-value">${seg.toFixed(1)}%</div><div class="kpi-sub">${seg>=20?'Saudável':seg>=5?'Atenção':'Risco alto'}</div></div>
+  </div>`;
+
+  html += `<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+    <div class="card"><div class="card-header"><div class="card-title">Composição anual do faturamento</div></div>
+      <div class="card-body"><div class="chart-wrap"><canvas id="chartD1"></canvas></div></div></div>
+    <div class="card"><div class="card-header"><div class="card-title">Distribuição dos custos</div></div>
+      <div class="card-body"><div class="chart-wrap"><canvas id="chartD2"></canvas></div></div></div>
+  </div>`;
+
+  html += `<div class="card"><div class="card-header"><div class="card-title">Resumo executivo — diagnóstico automático</div></div>
+    <div class="card-body" id="resumo-exec"></div></div>`;
+
+  el.innerHTML = html;
+
+  // Chart 1 - composição do faturamento (empilhado)
+  destroyChart('chartD1');
+  const totDed = getAnnualDeducoes();
+  const totCmv = getAnnualCMV();
+  charts.chartD1 = new Chart(document.getElementById('chartD1'),{
+    type:'bar',
+    data:{
+      labels:['Faturamento anual'],
+      datasets:[
+        {label:'CMV', data:[totCmv], backgroundColor:'#ef5350', borderRadius:4, borderWidth:0},
+        {label:'Deduções/Impostos', data:[totDed], backgroundColor:'#FFA726', borderRadius:4, borderWidth:0},
+        {label:'Custos Fixos', data:[cf], backgroundColor:'#1E88E5', borderRadius:4, borderWidth:0},
+        {label:'Lucro', data:[Math.max(ll,0)], backgroundColor:'#43A047', borderRadius:4, borderWidth:0}
+      ]
+    },
+    options:{responsive:true,maintainAspectRatio:false,scales:{x:{stacked:true,grid:{display:false},ticks:{font:{family:'Barlow',size:11}}},y:{stacked:true,ticks:{callback:v=>'R$ '+fmtK(v),font:{family:'Barlow',size:10}},grid:{color:'rgba(0,0,0,.05)'}}},plugins:{legend:{labels:{font:{family:'Barlow',size:11}}}}}
+  });
+
+  // Chart 2 - distribuição custos
+  const pItems = [];
+  c.groups.filter(g=>g.type==='cost').forEach(g => {
+    const t = sum12(mi => getGroupMonthTotal(g.id, mi));
+    if(t>0) pItems.push({label:g.label.substring(0,24), val:t});
+  });
+  if(ll>0) pItems.push({label:'Lucro Líquido', val:ll});
+  destroyChart('chartD2');
+  charts.chartD2 = new Chart(document.getElementById('chartD2'),{
+    type:'doughnut',
+    data:{
+      labels:pItems.map(x=>x.label),
+      datasets:[{data:pItems.map(x=>x.val), backgroundColor:['#1565C0','#1976D2','#1E88E5','#42A5F5','#64B5F6','#90CAF9','#43A047'], borderWidth:2, borderColor:'#fff'}]
+    },
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{font:{family:'Barlow',size:10},padding:6}}}}
+  });
+
+  // Diagnóstico
+  const alertas = [];
+  if(ll<0) alertas.push({t:'red',m:`Resultado negativo de ${fmt(Math.abs(ll))} no período. A empresa opera com prejuízo projetado.`});
+  if(mcp<20) alertas.push({t:'red',m:`Margem de contribuição de ${mcp.toFixed(1)}% está abaixo do mínimo recomendado (20%). Revisar precificação ou reduzir custos variáveis.`});
+  if(seg<10 && fat>0) alertas.push({t:'red',m:`Margem de segurança de ${seg.toFixed(1)}% é crítica. Alto risco operacional — pequenas quedas de faturamento geram prejuízo.`});
+  else if(seg<20 && fat>0) alertas.push({t:'amber',m:`Margem de segurança de ${seg.toFixed(1)}% merece atenção. Próxima do ponto de equilíbrio.`});
+  if(cf/Math.max(fat,1)>0.4) alertas.push({t:'amber',m:`Custos fixos representam ${(cf/fat*100).toFixed(1)}% do faturamento anual — estrutura pesada. Avaliar ganho de escala.`});
+  // Meses negativos
+  const mesesNeg = [];
+  for(let i=0;i<12;i++){ if(getMonthLL(i)<0) mesesNeg.push(c.months[i].label); }
+  if(mesesNeg.length>0) alertas.push({t:'amber',m:`${mesesNeg.length} meses com resultado negativo: ${mesesNeg.join(', ')}.`});
+  if(mcp>=30&&seg>=20&&ll>0) alertas.push({t:'green',m:`Indicadores saudáveis: MC de ${mcp.toFixed(1)}%, margem de segurança de ${seg.toFixed(1)}% e resultado positivo de ${fmt(ll)}.`});
+  if(fat===0) alertas.push({t:'amber',m:'Faturamento zerado. Preencha a aba Faturamento 12M para gerar o diagnóstico.'});
+
+  document.getElementById('resumo-exec').innerHTML = alertas.length ? alertas.map(a=>`
+    <div style="display:flex;gap:12px;align-items:flex-start;padding:12px 14px;margin-bottom:8px;background:${a.t==='red'?'var(--red-bg)':a.t==='amber'?'var(--amber-bg)':'var(--green-bg)'};border-left:4px solid ${a.t==='red'?'var(--red)':a.t==='amber'?'var(--amber)':'var(--green)'};border-radius:0 6px 6px 0;font-size:12px">
+      <span style="font-size:18px">${a.t==='red'?'⚠️':a.t==='amber'?'🔶':'✅'}</span>
+      <span style="color:var(--text);line-height:1.6">${a.m}</span>
+    </div>`).join('') : '<div style="text-align:center;color:var(--text3);padding:20px">Nenhum alerta.</div>';
+}
+
+// ============================================================
+// UTILS
+// ============================================================
+function fmt(v){ return 'R$ '+(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function fmt2(v){ return (v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function fmtK(v){
+  v = v||0;
+  if(Math.abs(v)>=1e6) return (v/1e6).toFixed(2)+'M';
+  if(Math.abs(v)>=1e3) return (v/1e3).toFixed(1)+'k';
+  return v.toFixed(0);
+}
+function fmtK2(v){ return 'R$ '+fmtK(v); }
+function fmtShort(v){ v=v||0; if(Math.abs(v)>=1e6) return (v/1e6).toFixed(1)+'M'; if(Math.abs(v)>=1e3) return (v/1e3).toFixed(1)+'k'; return v.toFixed(0); }
+function destroyChart(id){ if(charts[id]){ charts[id].destroy(); delete charts[id]; } }
+
+// ============================================================
+// MODAL
+// ============================================================
+function openModal(title, body, saveFn){
+  document.getElementById('modal-title').textContent = title;
+  document.getElementById('modal-body').innerHTML = body;
+  document.getElementById('modal-actions').innerHTML = `
+    <button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
+    <button class="btn btn-primary" onclick="saveModal()">✓ Salvar</button>
+  `;
+  _modalSave = saveFn;
+  document.getElementById('modal').style.display = 'flex';
+}
+function closeModal(){ document.getElementById('modal').style.display='none'; _modalSave=null; }
+function saveModal(){ if(_modalSave) _modalSave(); closeModal(); }
+
+// ============================================================
+// TABS
+// ============================================================
+let activeTab = 'config';
+function showTab(tab, el){
+  activeTab = tab;
+  document.querySelectorAll('.pane').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('pane-'+tab).classList.add('active');
+  if(el) el.classList.add('active');
+  renderPane();
+}
+
+function renderPane(){
+  if(!getActive()) return;
+  if(activeTab==='config') renderConfig();
+  else if(activeTab==='faturamento') renderFaturamento();
+  else if(activeTab==='premissas') renderPremissas();
+  else if(activeTab==='dre') renderDRE();
+  else if(activeTab==='markup') renderMarkup();
+  else if(activeTab==='pe') renderPE();
+  else if(activeTab==='tributos') renderTributos();
+  else if(activeTab==='dashboard') renderDashboard();
+}
+
+// ============================================================
+// RENDER ALL
+// ============================================================
+function renderAll(){
+  renderSidebar();
+  renderTopbar();
+  const w = document.getElementById('welcome');
+  const c = getActive();
+  if(!c){
+    w.style.display='block';
+    document.querySelectorAll('.pane').forEach(p=>p.classList.remove('active'));
+    document.getElementById('tabs').style.display = 'none';
+  } else {
+    w.style.display='none';
+    document.getElementById('tabs').style.display = 'flex';
+    document.getElementById('pane-'+activeTab).classList.add('active');
+    recalc();
+    renderPane();
+  }
+}
+
+// ============================================================
+// SIDEBAR TOGGLE
+// ============================================================
+function toggleSidebar(){
+  const b = document.body;
+  const icon = document.getElementById('sb-toggle-icon');
+  // 3 estados: normal → collapsed → hidden → normal
+  if(b.classList.contains('sb-hidden')){
+    b.classList.remove('sb-hidden');
+    b.classList.remove('sb-collapsed');
+    icon.textContent = '‹';
+    localStorage.setItem('erv_sb_state','normal');
+  } else if(b.classList.contains('sb-collapsed')){
+    b.classList.remove('sb-collapsed');
+    b.classList.add('sb-hidden');
+    icon.textContent = '☰';
+    localStorage.setItem('erv_sb_state','hidden');
+  } else {
+    b.classList.add('sb-collapsed');
+    icon.textContent = '›';
+    localStorage.setItem('erv_sb_state','collapsed');
+  }
+}
+function restoreSidebarState(){
+  const s = localStorage.getItem('erv_sb_state');
+  const b = document.body;
+  const icon = document.getElementById('sb-toggle-icon');
+  if(s==='collapsed'){ b.classList.add('sb-collapsed'); icon.textContent='›'; }
+  else if(s==='hidden'){ b.classList.add('sb-hidden'); icon.textContent='☰'; }
+}
+
+// ============================================================
+// CLOUD SYNC (placeholder - ativado com Supabase)
+// ============================================================
+function openCloudConfig(){
+  openModal('☁ Sincronização na nuvem', `
+    <div style="background:#e3f2fd;padding:14px;border-radius:6px;margin-bottom:14px;font-size:12px;line-height:1.7;color:var(--text)">
+      <strong style="color:var(--erv-blue)">Como ativar o sync multi-dispositivo:</strong><br>
+      1. Crie uma conta grátis em <strong>supabase.com</strong><br>
+      2. Crie um novo projeto (região: São Paulo)<br>
+      3. Em <strong>Settings → API</strong>, copie o <em>Project URL</em> e a <em>anon key</em><br>
+      4. Cole abaixo e clique em Conectar
+    </div>
+    <div class="modal-row">
+      <div class="modal-label">Supabase Project URL</div>
+      <input type="text" id="m-sb-url" placeholder="https://xxxxx.supabase.co" value="${localStorage.getItem('erv_sb_url')||''}">
+    </div>
+    <div class="modal-row">
+      <div class="modal-label">Supabase anon public key</div>
+      <input type="text" id="m-sb-key" placeholder="eyJhbGciOi..." value="${localStorage.getItem('erv_sb_key')||''}">
+    </div>
+    <div style="font-size:11px;color:var(--amber);padding:8px;background:#fff3e0;border-radius:5px">
+      ⚠️ Esta versão salva as chaves apenas localmente. Para ativar o sync real, você precisa executar o SQL de criação da tabela no Supabase. Peça para ativarmos na próxima etapa.
+    </div>
+  `, () => {
+    const url = document.getElementById('m-sb-url').value.trim();
+    const key = document.getElementById('m-sb-key').value.trim();
+    if(url && key){
+      localStorage.setItem('erv_sb_url', url);
+      localStorage.setItem('erv_sb_key', key);
+      toast('Credenciais salvas! Próxima etapa: ativar integração.');
+    }
+  });
+}
+
+// ============================================================
+// INIT
+// ============================================================
+loadState();
+restoreSidebarState();
+renderAll();
+
+</script>
+</body>
+</html>
