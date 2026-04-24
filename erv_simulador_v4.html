@@ -21,25 +21,23 @@
   --shadow:0 1px 4px rgba(21,101,192,.10);
   --shadow2:0 2px 14px rgba(21,101,192,.14);
   --sidebar-w:260px;
-  --sidebar-w-collapsed:56px;
 }
-body.sb-collapsed{--sidebar-w:var(--sidebar-w-collapsed)}
 body.sb-hidden{--sidebar-w:0px}
-body.sb-hidden .sidebar{transform:translateX(-100%)}
-body.sb-collapsed .sb-logo > div:last-child,
-body.sb-collapsed .sb-section,
-body.sb-collapsed .sb-company-name,
-body.sb-collapsed .sb-company-del,
-body.sb-collapsed .sb-footer,
-body.sb-collapsed .sb-btn-text{display:none}
-body.sb-collapsed .sb-company{justify-content:center;padding:9px 0}
-body.sb-collapsed .sb-company::before{content:attr(data-initial);display:inline-flex;width:26px;height:26px;align-items:center;justify-content:center;background:rgba(255,255,255,.1);border-radius:50%;font-weight:700;font-size:11px;color:#fff}
-body.sb-collapsed .sb-company.active::before{background:#90CAF9;color:var(--erv-blue)}
-body.sb-collapsed .sb-btn{padding:8px 0;justify-content:center}
-body.sb-collapsed .sb-logo{padding:16px 8px;justify-content:center}
-.sb-toggle{position:absolute;top:12px;right:-14px;width:28px;height:28px;background:var(--erv-blue);border:2px solid #fff;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:700;z-index:110;box-shadow:0 2px 6px rgba(0,0,0,.2);transition:all .15s}
-.sb-toggle:hover{background:var(--erv-blue2);transform:scale(1.08)}
-body.sb-hidden .sb-toggle{left:10px;right:auto;position:fixed;top:14px;transform:none;background:var(--erv-blue)}
+body.sb-hidden .sidebar{transform:translateX(-100%);pointer-events:none}
+.sb-toggle{
+  position:fixed;
+  top:14px;
+  left:calc(var(--sidebar-w) - 14px);
+  width:28px;height:28px;
+  background:var(--erv-blue);border:2px solid #fff;
+  border-radius:50%;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  color:#fff;font-size:13px;font-weight:700;
+  z-index:150;
+  box-shadow:0 2px 8px rgba(0,0,0,.25);
+  transition:left .3s ease, background .15s, transform .15s;
+}
+.sb-toggle:hover{background:var(--erv-blue2);transform:scale(1.1)}
 .sidebar{transition:transform .3s ease}
 body{font-family:'Barlow',sans-serif;background:var(--bg);color:var(--text);font-size:13px;line-height:1.5;overflow-x:hidden}
 h1,h2,h3{font-family:'Barlow Condensed',sans-serif}
@@ -296,10 +294,26 @@ select{cursor:pointer}
 ::-webkit-scrollbar-thumb:hover{background:var(--erv-blue)}
 
 @media print {
-  .sidebar,.tabs,.btn{display:none !important}
-  .pane{display:block !important}
-  body{background:#fff}
+  @page { size: A4 landscape; margin: 10mm; }
+  body{background:#fff !important}
+  .sidebar,.sb-toggle,.tabs,.topbar{display:none !important}
+  .layout{grid-template-columns:1fr !important}
+  .content{padding:0 !important}
+  .pane{display:none !important}
+  .pane.active{display:block !important}
+  .btn,.btn-ghost,.btn-primary,.btn-danger,.btn-success{display:none !important}
+  .card{box-shadow:none !important;page-break-inside:avoid}
+  .kpi{box-shadow:none !important;border:1px solid #ccc !important}
+  .chart-wrap{max-height:250px}
+  .scroll-x{overflow:visible !important}
+  .month-grid{min-width:auto !important}
+  .print-header{display:block !important;margin-bottom:16px;padding-bottom:10px;border-bottom:3px solid var(--erv-blue)}
+  .section-title{color:var(--erv-blue) !important}
+  /* Garantir que elementos específicos de print apareçam */
+  .mg-cell,.mg-head{font-size:10px !important;padding:3px 5px !important}
+  input[type=text],input[type=number]{border:none !important;padding:0 !important;background:transparent !important}
 }
+.print-header{display:none}
 
 .toast{position:fixed;bottom:20px;right:20px;background:#2e7d32;color:#fff;padding:12px 18px;border-radius:6px;font-size:13px;z-index:400;box-shadow:0 6px 20px rgba(0,0,0,.2);animation:slideIn .3s ease}
 @keyframes slideIn{from{transform:translateX(400px);opacity:0}to{transform:translateX(0);opacity:1}}
@@ -309,11 +323,13 @@ select{cursor:pointer}
 
 <div class="layout">
 
+<!-- BOTÃO TOGGLE FIXO (fora da sidebar) -->
+<div class="sb-toggle" onclick="toggleSidebar()" title="Abrir/Fechar painel de empresas">
+  <span id="sb-toggle-icon">‹</span>
+</div>
+
 <!-- ============ SIDEBAR ============ -->
 <aside class="sidebar">
-  <div class="sb-toggle" onclick="toggleSidebar()" title="Recolher/Expandir">
-    <span id="sb-toggle-icon">‹</span>
-  </div>
   <div class="sb-logo">
     <div class="logo-bars">
       <div class="logo-bar b1"></div><div class="logo-bar b2"></div>
@@ -710,8 +726,13 @@ function renderConfig(){
   const c = getActive(); if(!c) return;
   const el = document.getElementById('pane-config');
   el.innerHTML = `
-    <div class="section-title">Configuração — ${c.name}</div>
-    <div class="section-sub">Dados gerais da empresa. Ajuste nome, regime tributário e período de projeção.</div>
+    <div class="flex items-center justify-between mb-12">
+      <div>
+        <div class="section-title">Configuração — ${c.name}</div>
+        <div class="section-sub">Dados gerais da empresa. Ajuste nome, regime tributário e período de projeção.</div>
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="printActiveTab()">🖨️ Imprimir / PDF</button>
+    </div>
     <div class="card">
       <div class="card-header"><div class="card-title">Dados da empresa</div></div>
       <div class="card-body">
@@ -827,6 +848,7 @@ function renderFaturamento(){
       <div class="flex gap-8">
         <button class="btn btn-ghost btn-sm" onclick="bulkFaturamento()">≡ Distribuir valor</button>
         <button class="btn btn-ghost btn-sm" onclick="applyGrowth()">📈 Aplicar crescimento %</button>
+        <button class="btn btn-ghost btn-sm" onclick="printActiveTab()">🖨️ Imprimir / PDF</button>
       </div>
     </div>
   `;
@@ -951,6 +973,7 @@ function renderPremissas(){
       </div>
       <div class="flex gap-8">
         <button class="btn btn-ghost btn-sm" onclick="openAddGroupPremissa()">+ Novo grupo</button>
+        <button class="btn btn-ghost btn-sm" onclick="printActiveTab()">🖨️ Imprimir / PDF</button>
       </div>
     </div>
   `;
@@ -1295,6 +1318,7 @@ function renderMarkup(){
       <div class="flex gap-8">
         <button class="btn btn-ghost btn-sm" onclick="addProduto()">+ Novo produto</button>
         ${prods.length>0 ? `<button class="btn btn-ghost btn-sm" onclick="duplicarProduto()">📄 Duplicar</button>`:''}
+        ${prods.length>0 ? `<button class="btn btn-ghost btn-sm" onclick="printActiveTab()">🖨️ Imprimir / PDF</button>`:''}
       </div>
     </div>
   `;
@@ -1679,6 +1703,7 @@ function renderDRE(){
       <div class="flex gap-8">
         <button class="btn btn-ghost btn-sm" onclick="toggleAllDRE(true)">+ Expandir tudo</button>
         <button class="btn btn-ghost btn-sm" onclick="toggleAllDRE(false)">− Retrair tudo</button>
+        <button class="btn btn-ghost btn-sm" onclick="printActiveTab()">🖨️ Imprimir / PDF</button>
       </div>
     </div>
   `;
@@ -1845,8 +1870,13 @@ function toggleAllDRE(expand){
 function renderPE(){
   const c = getActive(); if(!c) return;
   const el = document.getElementById('pane-pe');
-  let html = `<div class="section-title">Ponto de Equilíbrio — 12 meses</div>
-    <div class="section-sub">Faturamento mínimo para cobrir os custos fixos em cada mês e na visão anual consolidada.</div>`;
+  let html = `<div class="flex items-center justify-between mb-12">
+    <div>
+      <div class="section-title">Ponto de Equilíbrio — 12 meses</div>
+      <div class="section-sub">Faturamento mínimo para cobrir os custos fixos em cada mês e na visão anual consolidada.</div>
+    </div>
+    <button class="btn btn-ghost btn-sm" onclick="printActiveTab()">🖨️ Imprimir / PDF</button>
+  </div>`;
 
   // KPIs anuais
   const totFat = getAnnualRevenue();
@@ -1993,8 +2023,13 @@ function renderTributos(){
     return '<span class="regime-badge badge-mid">— Intermediário</span>';
   }
 
-  let html = `<div class="section-title">Comparativo Regime Tributário</div>
-    <div class="section-sub">Cálculo sobre faturamento anual de <strong>${fmt(fatAnual)}</strong> (atividade: ${ativ}). Clique no cartão para ativar o regime.</div>`;
+  let html = `<div class="flex items-center justify-between mb-12">
+    <div>
+      <div class="section-title">Comparativo Regime Tributário</div>
+      <div class="section-sub">Cálculo sobre faturamento anual de <strong>${fmt(fatAnual)}</strong> (atividade: ${ativ}). Clique no cartão para ativar o regime.</div>
+    </div>
+    <button class="btn btn-ghost btn-sm" onclick="printActiveTab()">🖨️ Imprimir / PDF</button>
+  </div>`;
 
   html += `<div class="regime-grid">`;
   [{k:'simples',name:'Simples Nacional',d:s,desc:'Alíquota efetiva sobre faturamento · Tabela Anexo I/III · PIS/COFINS/IRPJ/CSLL unificados'},
@@ -2051,7 +2086,7 @@ function renderDashboard(){
       <div class="section-title">Dashboard — ${c.name}</div>
       <div class="section-sub">Visão consolidada dos 12 meses com diagnóstico automático.</div>
     </div>
-    <button class="btn btn-ghost btn-sm" onclick="window.print()">🖨️ Imprimir / PDF</button>
+    <button class="btn btn-ghost btn-sm" onclick="printActiveTab()">🖨️ Imprimir / PDF</button>
   </div>`;
 
   html += `<div class="kpi-grid">
@@ -2207,34 +2242,95 @@ function renderAll(){
 }
 
 // ============================================================
-// SIDEBAR TOGGLE
+// IMPRESSÃO POR ABA — gera header com identificação e imprime só a aba ativa
+// ============================================================
+function printActiveTab(){
+  const c = getActive();
+  if(!c){ toast('Selecione uma empresa primeiro'); return; }
+  
+  const tabNames = {
+    config: 'Configuração da empresa',
+    faturamento: 'Projeção de Faturamento 12 meses',
+    premissas: 'Premissas de Custos e Despesas',
+    dre: 'DRE Consolidado',
+    markup: 'Simulação de Markup de Produtos',
+    pe: 'Análise de Ponto de Equilíbrio',
+    tributos: 'Comparativo de Regime Tributário',
+    dashboard: 'Dashboard Executivo'
+  };
+  
+  const tabLabel = tabNames[activeTab] || 'Relatório';
+  const pane = document.getElementById('pane-' + activeTab);
+  if(!pane) return;
+  
+  // Remover header anterior se existir
+  const oldHeader = pane.querySelector('.print-header');
+  if(oldHeader) oldHeader.remove();
+  
+  // Criar cabeçalho de impressão
+  const header = document.createElement('div');
+  header.className = 'print-header';
+  header.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:flex-start">
+      <div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+          <div style="display:flex;align-items:flex-end;gap:2px;height:24px">
+            <div style="width:4px;height:9px;background:#64B5F6;border-radius:2px 2px 0 0"></div>
+            <div style="width:4px;height:12px;background:#42A5F5;border-radius:2px 2px 0 0"></div>
+            <div style="width:4px;height:16px;background:#1E88E5;border-radius:2px 2px 0 0"></div>
+            <div style="width:4px;height:20px;background:#90CAF9;border-radius:2px 2px 0 0"></div>
+            <div style="width:4px;height:24px;background:#1565C0;border-radius:2px 2px 0 0"></div>
+          </div>
+          <div>
+            <div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:700;color:#1565C0;line-height:1">ERV</div>
+            <div style="font-size:9px;color:#78909C;letter-spacing:.18em;text-transform:uppercase">Consultoria</div>
+          </div>
+        </div>
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:600;color:#1565C0">${tabLabel}</div>
+        <div style="font-size:11px;color:#4a6070">Empresa: <strong>${c.name}</strong></div>
+      </div>
+      <div style="text-align:right;font-size:10px;color:#8a9aaa">
+        <div>Período: ${c.months[0].label} a ${c.months[11].label}</div>
+        <div>Regime: ${c.regime==='simples'?'Simples Nacional':c.regime==='presumido'?'Lucro Presumido':'Lucro Real'}</div>
+        <div>Emitido em: ${new Date().toLocaleDateString('pt-BR')} ${new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</div>
+      </div>
+    </div>
+  `;
+  pane.insertBefore(header, pane.firstChild);
+  
+  // Disparar impressão
+  setTimeout(() => {
+    window.print();
+    // Remover o header de impressão após
+    setTimeout(() => { if(header && header.parentNode) header.remove(); }, 500);
+  }, 100);
+}
+
+
 // ============================================================
 function toggleSidebar(){
   const b = document.body;
   const icon = document.getElementById('sb-toggle-icon');
-  // 3 estados: normal → collapsed → hidden → normal
   if(b.classList.contains('sb-hidden')){
+    // Abrir
     b.classList.remove('sb-hidden');
-    b.classList.remove('sb-collapsed');
     icon.textContent = '‹';
-    localStorage.setItem('erv_sb_state','normal');
-  } else if(b.classList.contains('sb-collapsed')){
-    b.classList.remove('sb-collapsed');
-    b.classList.add('sb-hidden');
-    icon.textContent = '☰';
-    localStorage.setItem('erv_sb_state','hidden');
+    localStorage.setItem('erv_sb_state','open');
   } else {
-    b.classList.add('sb-collapsed');
+    // Fechar
+    b.classList.add('sb-hidden');
     icon.textContent = '›';
-    localStorage.setItem('erv_sb_state','collapsed');
+    localStorage.setItem('erv_sb_state','hidden');
   }
 }
 function restoreSidebarState(){
   const s = localStorage.getItem('erv_sb_state');
   const b = document.body;
   const icon = document.getElementById('sb-toggle-icon');
-  if(s==='collapsed'){ b.classList.add('sb-collapsed'); icon.textContent='›'; }
-  else if(s==='hidden'){ b.classList.add('sb-hidden'); icon.textContent='☰'; }
+  if(s === 'hidden'){
+    b.classList.add('sb-hidden');
+    if(icon) icon.textContent = '›';
+  }
 }
 
 // ============================================================
